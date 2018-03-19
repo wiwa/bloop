@@ -77,15 +77,16 @@ object Tasks {
       // FORMAT: ON
     }
 
+    var counter: Int = 0
     def compile(project: Project): Compilation.Result = {
-      logger.debug(s"Scheduled compilation of '$project' starting at $currentTime.")
+      logger.info(s"Scheduled compilation of '$project' starting at $currentTime (#$counter).")
       val previous = state.results.getResult(project)
       val inputs = toInputs(project, reporterConfig, previous)
       try Compilation.Success(project, Compiler.compile(inputs))
       catch {
         case f: xsbti.CompileFailed => Compilation.Failed(project, f.problems().toList)
         case _: xsbti.CompileCancelled => Compilation.Cancelled(project)
-      }
+      } finally counter += 1
     }
 
     val dag = state.build.getDagFor(project)
