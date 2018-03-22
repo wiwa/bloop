@@ -56,7 +56,9 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
           if (Files.isRegularFile(targetFile) &&
               (targetPath.endsWith(".scala") || targetPath.endsWith(".java"))) {
             val ack = observer.onNext(event)
-            logger.debug(s"File watching received ack $ack after ${event.prettyPrint}")
+             import scala.concurrent.ExecutionContext.Implicits.global
+            logger.info(s"File watching received ack $ack after ${event.prettyPrint}")
+            ack.onComplete(s => logger.info(s.toString))
             ()
           }
         }

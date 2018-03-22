@@ -96,7 +96,8 @@ object Interpreter {
     val reachable = Dag.dfs(state.build.getDagFor(project))
     val allSourceDirs = reachable.iterator.flatMap(_.sourceDirectories.toList).map(_.underlying)
     val watcher = new SourceWatcher(project, allSourceDirs.toList, state.logger)
-    val fg = (state: State) => f(state).map(state => State.stateCache.updateBuild(state))
+    val fg = (state: State) =>
+      f(state).map(state => State.stateCache.updateBuild(state)).executeWithFork
 
     // Force the first execution before relying on the file watching task
     fg(state).flatMap(newState => watcher.watch(newState, fg))
