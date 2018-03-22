@@ -11,7 +11,14 @@ import scala.collection.JavaConverters._
 import io.methvin.watcher.DirectoryChangeEvent.EventType
 import io.methvin.watcher.{DirectoryChangeEvent, DirectoryChangeListener, DirectoryWatcher}
 import monix.eval.Task
+import monix.execution.Ack
+import monix.execution.Ack.{Continue, Stop}
+import monix.execution.exceptions.APIContractViolationException
+import monix.reactive.observables.ObservableLike.Operator
+import monix.reactive.observers.Subscriber
 import monix.reactive.{Consumer, MulticastStrategy, Observable}
+
+import scala.concurrent.Future
 
 final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
   private val dirs = dirs0.distinct
@@ -26,20 +33,21 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
     val ngout = state0.commonOptions.ngout
     def runAction(state: State, event: DirectoryChangeEvent): Task[State] = {
       // Someone that wants this to be supported by Windows will need to make it work for all terminals
-      if (!BspServer.isWindows)
-        logger.info("\u001b[H\u001b[2J") // Clean the terminal before acting on the file event action
+/*      if (!BspServer.isWindows)
+        logger.info("\u001b[H\u001b[2J") // Clean the terminal before acting on the file event action*/
       logger.debug(s"A ${event.eventType()} in ${event.path()} has triggered an event.")
       action(state)
     }
 
     val fileEventConsumer = Consumer.foldLeftAsync[State, DirectoryChangeEvent](state0) {
       case (state, event) =>
-        event.eventType match {
+        val task = event.eventType match {
           case EventType.CREATE => runAction(state, event)
           case EventType.MODIFY => runAction(state, event)
           case EventType.OVERFLOW => runAction(state, event)
           case EventType.DELETE => Task.now(state)
         }
+        task.map { x => logger.info(s"Executed $state"); x }
     }
 
     val (observer, observable) =
@@ -75,8 +83,53 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
     val watchHandle = watchingTask.materialize.runAsync(ExecutionContext.ioScheduler)
 
     observable
+      .dump("Hello")
+      .liftByOperator(respectMyAuthoritah)
       .consumeWith(fileEventConsumer)
       .doOnFinish(_ => Task(watchHandle.cancel()))
       .doOnCancel(Task(watchHandle.cancel()))
   }
+
+  def respectMyAuthoritah[A]: Operator[A, A] =
+    new Operator[A, A] {
+      def apply(out: Subscriber[A]): Subscriber[A] =
+        new Subscriber[A] {
+          implicit val scheduler = out.scheduler
+          private[this] var lastAck: Future[Ack] = Continue
+          private[this] var isDone = false
+
+          def onNext(elem: A): Future[Ack] = {
+            val ack = lastAck.syncTryFlatten
+
+            ack match {
+              case Stop =>
+                scheduler.reportFailure(err("onNext after Stop"))
+                Stop
+              case Continue =>
+                lastAck = out.onNext(elem)
+                lastAck
+              case _ =>
+                onError(err("onNext backpressure"))
+                lastAck = Stop
+                lastAck
+            }
+          }
+
+          private def signalComplete(ex: Option[Throwable]): Unit = {
+            if (!isDone) {
+              isDone = true
+              ex.fold(out.onComplete())(out.onError)
+            } else {
+              scheduler.reportFailure(err(s"complete($ex)"))
+            }
+          }
+
+          override def onComplete(): Unit =
+            signalComplete(None)
+          override def onError(ex: Throwable): Unit =
+            signalComplete(Some(ex))
+          private def err(label: String) =
+            new APIContractViolationException("Stop signaled before")
+        }
+    }
 }

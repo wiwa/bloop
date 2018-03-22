@@ -10,7 +10,6 @@ import bloop.logging.Logger
 import sbt.internal.inc.{FreshCompilerCache, Locate, LoggedReporter, ZincUtil}
 
 case class CompileInputs(
-
     scalaInstance: ScalaInstance,
     compilerCache: CompilerCache,
     sourceDirectories: Array[AbsolutePath],
