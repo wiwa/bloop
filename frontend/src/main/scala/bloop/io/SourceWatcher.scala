@@ -35,6 +35,7 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
 
     val fileEventConsumer = FoldLeftSyncConsumer.consume[State, DirectoryChangeEvent](state0) {
       case (state, event) =>
+        logger.info(s"The consumer received ${event.prettyPrint} for results ${state.results}")
         event.eventType match {
           case EventType.CREATE => runAction(state, event)
           case EventType.MODIFY => runAction(state, event)
@@ -45,7 +46,7 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
 
     val (observer, observable) =
       Observable.multicast[DirectoryChangeEvent](MulticastStrategy.publish)(
-        ExecutionContext.ioScheduler)
+        ExecutionContext.scheduler)
 
     val watcher = DirectoryWatcher.create(
       dirsAsJava,
