@@ -21,7 +21,8 @@ object ExecutionContext {
 
   import monix.execution.UncaughtExceptionReporter.LogExceptionsToStandardErr
   import monix.execution.ExecutionModel
-  implicit lazy val scheduler: Scheduler =
-    ExecutorScheduler(executor, LogExceptionsToStandardErr, ExecutionModel.AlwaysAsyncExecution)
+  implicit lazy val scheduler: Scheduler = monix.execution.Scheduler.Implicits.global
+
+  //ExecutorScheduler(executor, LogExceptionsToStandardErr, ExecutionModel.AlwaysAsyncExecution)
   implicit lazy val ioScheduler: Scheduler = Scheduler.io("bloop-io")
 }

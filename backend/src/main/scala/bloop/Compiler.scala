@@ -24,6 +24,7 @@ case class CompileInputs(
 )
 
 object Compiler {
+  val x: Int = 1
   private final class ZincClasspathEntryLookup(previousResult: PreviousResult)
       extends PerClasspathEntryLookup {
     override def analysis(classpathEntry: File): Optional[CompileAnalysis] =
