@@ -32,7 +32,7 @@ final class FoldLeftSyncConsumer[A, R](initial: () => R, f: (R, A) => Task[R])
         })
 
         try {
-          println(s"Consuming an event $elem in scheduler $s!")
+          println(s"Consuming an event $elem in scheduler $s with ${s.executionModel}!")
           val future = running match {
             case Some(previous) => previous.flatMap(_ => task.runAsync)
             case None => task.runAsync

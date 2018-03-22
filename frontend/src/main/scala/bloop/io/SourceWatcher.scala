@@ -22,13 +22,17 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
   import java.nio.file.Files
   dirs.foreach(p => if (!Files.exists(p)) Files.createDirectories(p) else ())
 
+  implicit class XDirectoryChangeEvent(event: DirectoryChangeEvent) {
+    def prettyPrint: String = s"${event.eventType()} in ${event.path()} [${event.count()}]"
+  }
+
   def watch(state0: State, action: State => Task[State]): Task[State] = {
     val ngout = state0.commonOptions.ngout
     def runAction(state: State, event: DirectoryChangeEvent): Task[State] = {
       // Someone that wants this to be supported by Windows will need to make it work for all terminals
 /*      if (!BspServer.isWindows)
         logger.info("\u001b[H\u001b[2J") // Clean the terminal before acting on the file event action*/
-      logger.debug(s"A ${event.eventType()} in ${event.path()} has triggered an event.")
+      logger.debug(s"A ${event.prettyPrint} has triggered an event.")
       action(state)
     }
 
@@ -54,7 +58,8 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
           val targetPath = targetFile.toFile.getAbsolutePath()
           if (Files.isRegularFile(targetFile) &&
               (targetPath.endsWith(".scala") || targetPath.endsWith(".java"))) {
-            observer.onNext(event)
+            val ack = observer.onNext(event)
+            logger.debug(s"File watching received ack $ack after ${event.prettyPrint}")
             ()
           }
         }
