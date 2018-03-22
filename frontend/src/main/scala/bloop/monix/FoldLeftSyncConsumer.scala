@@ -1,5 +1,6 @@
 package bloop.monix
 
+import io.methvin.watcher.DirectoryChangeEvent
 import monix.eval.{Callback, Task}
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.{Ack, CancelableFuture, Scheduler}
@@ -32,7 +33,8 @@ final class FoldLeftSyncConsumer[A, R](initial: () => R, f: (R, A) => Task[R])
         })
 
         try {
-          println(s"Consuming an event $elem in scheduler $s with ${s.executionModel}!")
+          import bloop.io.SourceWatcher.XDirectoryChangeEvent
+          println(s"Consuming an event ${elem.asInstanceOf[DirectoryChangeEvent].prettyPrint} in scheduler $s with ${s.executionModel}!")
           val future = running match {
             case Some(previous) => previous.flatMap(_ => task.runAsync)
             case None => task.runAsync

@@ -22,10 +22,7 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
   import java.nio.file.Files
   dirs.foreach(p => if (!Files.exists(p)) Files.createDirectories(p) else ())
 
-  implicit class XDirectoryChangeEvent(event: DirectoryChangeEvent) {
-    def prettyPrint: String = s"${event.eventType()} in ${event.path()} [${event.count()}]"
-  }
-
+  import SourceWatcher.XDirectoryChangeEvent
   def watch(state0: State, action: State => Task[State]): Task[State] = {
     val ngout = state0.commonOptions.ngout
     def runAction(state: State, event: DirectoryChangeEvent): Task[State] = {
@@ -83,5 +80,11 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
       .consumeWith(fileEventConsumer)
       .doOnFinish(_ => Task(watchHandle.cancel()))
       .doOnCancel(Task(watchHandle.cancel()))
+  }
+}
+
+object SourceWatcher {
+  implicit class XDirectoryChangeEvent(event: DirectoryChangeEvent) {
+    def prettyPrint: String = s"${event.eventType()} in ${event.path()} [${event.count()}]"
   }
 }
