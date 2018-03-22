@@ -3,15 +3,15 @@ package bloop.io
 import java.nio.file.Path
 
 import bloop.Project
-import bloop.bsp.BspServer
 import bloop.engine.{ExecutionContext, State}
 import bloop.logging.Logger
+import bloop.monix.FoldLeftSyncConsumer
 
 import scala.collection.JavaConverters._
 import io.methvin.watcher.DirectoryChangeEvent.EventType
 import io.methvin.watcher.{DirectoryChangeEvent, DirectoryChangeListener, DirectoryWatcher}
 import monix.eval.Task
-import monix.reactive.{Consumer, MulticastStrategy, Observable}
+import monix.reactive.{MulticastStrategy, Observable}
 
 final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
   private val dirs = dirs0.distinct
@@ -32,7 +32,7 @@ final class SourceWatcher(project: Project, dirs0: Seq[Path], logger: Logger) {
       action(state)
     }
 
-    val fileEventConsumer = Consumer.foldLeftAsync[State, DirectoryChangeEvent](state0) {
+    val fileEventConsumer = FoldLeftSyncConsumer.consume[State, DirectoryChangeEvent](state0) {
       case (state, event) =>
         event.eventType match {
           case EventType.CREATE => runAction(state, event)
