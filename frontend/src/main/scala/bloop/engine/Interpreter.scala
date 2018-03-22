@@ -330,9 +330,7 @@ object Interpreter {
     val pool = previousState.pool
     val ngout = cliOptions.common.ngout
     try {
-      val handle = newState
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
-        .runAsync(previousState.scheduler)
+      val handle = newState.runAsync(previousState.scheduler)
 
       // Let's cancel tasks (if supported by the underlying implementation) when clients disconnect
       pool.addListener {

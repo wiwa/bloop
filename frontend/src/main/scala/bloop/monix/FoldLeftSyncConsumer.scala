@@ -25,9 +25,13 @@ final class FoldLeftSyncConsumer[A, R](initial: () => R, f: (R, A) => Task[R])
       def onNext(elem: A): Future[Ack] = {
         // Do the `: Continue` and `: Stop` because of a bug in Scalameta semanticdb generation
         def task: Task[Ack] = f(state, elem).transform(update => {
+          println("")
+          println(s"Compilation completed with state ${update.hashCode} ($update)")
+          println("")
           state = update
           Continue: Continue
         }, error => {
+          println("FAILED!")
           onError(error)
           Stop: Stop
         })
@@ -36,8 +40,8 @@ final class FoldLeftSyncConsumer[A, R](initial: () => R, f: (R, A) => Task[R])
           import bloop.io.SourceWatcher.XDirectoryChangeEvent
           println(s"Consuming an event ${elem.asInstanceOf[DirectoryChangeEvent].prettyPrint} in scheduler $s with ${s.executionModel}!")
           val future = running match {
-            case Some(previous) => previous.flatMap(_ => task.runAsync)
-            case None => task.runAsync
+            case Some(previous) => previous.flatMap(_ => task.executeWithFork.runAsync)
+            case None => task.executeWithFork.runAsync
           }
 
           running = Some(future)

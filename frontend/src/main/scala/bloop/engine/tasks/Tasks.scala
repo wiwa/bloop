@@ -62,6 +62,7 @@ object Tasks {
       excludeRoot: Boolean = false
   ): Task[State] = {
     import state.{logger, compilerCache}
+    logger.info(s"About to compile state with ${state.results}")
     def toInputs(project: Project, config: ReporterConfig, result: PreviousResult) = {
       val instance = project.scalaInstance
       val sourceDirs = project.sourceDirectories
