@@ -4,6 +4,7 @@ import java.util.Properties
 import java.util.regex.Pattern
 
 import bloop.DependencyResolution
+import bloop.cli.ExitStatus
 import bloop.config.Config
 import bloop.exec.JavaProcess
 import bloop.io.AbsolutePath
@@ -84,6 +85,8 @@ object TestInternals {
    * @param eventHandler    Handler that reacts on messages from the testing frameworks.
    * @param logger          Logger receiving test output.
    * @param env             The environment properties to run the program with.
+   * @return An `ExitStatus`. `Ok` represents test success, `UnexpectedError` represents
+   *         tests failure.
    */
   def executeTasks(cwd: AbsolutePath,
                    fork: JavaProcess,
@@ -91,7 +94,7 @@ object TestInternals {
                    args: List[Config.TestArgument],
                    eventHandler: EventHandler,
                    logger: Logger,
-                   env: Properties): Unit = {
+                   env: Properties): ExitStatus = {
     logger.debug("Starting forked test execution.")
 
     // Make sure that we cache the resolution of the test agent jar and we don't repeat it every time
@@ -108,7 +111,12 @@ object TestInternals {
       fork.runMain(cwd, forkMain, arguments, logger, env, testAgentJars)
     }
 
-    if (exitCode != 0) logger.error(s"Forked execution terminated with non-zero code: $exitCode")
+    if (exitCode != 0) {
+      logger.error(s"Forked execution terminated with non-zero code: $exitCode")
+      ExitStatus.UnexpectedError
+    } else {
+      ExitStatus.Ok
+    }
   }
 
   def loadFramework(l: ClassLoader, fqns: List[String], logger: Logger): Option[Framework] = {

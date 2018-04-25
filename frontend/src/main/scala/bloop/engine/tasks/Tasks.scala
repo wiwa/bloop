@@ -260,6 +260,8 @@ object Tasks {
    * @param project The project for which to run the tests.
    * @param cwd      The directory in which to start the forked JVM.
    * @param isolated Do not run the tests for the dependencies of `project`.
+   * @param frameworkSpecificRawArgs Additional arguments to be passed to the testing framework.
+   *                                 Those are ignored if multiple frameworks are in use.
    * @param testFilter A function from a fully qualified class name to a Boolean, indicating whether
    *                   a test must be included.
    * @return The new state of Bloop.
@@ -271,77 +273,30 @@ object Tasks {
       isolated: Boolean,
       frameworkSpecificRawArgs: List[String],
       testFilter: String => Boolean
-  ): Task[State] = Task {
+  ): Task[State] = {
     // TODO(jvican): This method should cache the test loader always.
     import state.logger
     import bloop.util.JavaCompat.EnrichOptional
 
     val projectsToTest = if (isolated) List(project) else Dag.dfs(state.build.getDagFor(project))
-    projectsToTest.foreach { project =>
-      val projectName = project.name
-      val projectTestArgs = project.testOptions.arguments
-      val forkProcess = JavaProcess(project.javaEnv, project.classpath)
-      val testLoader = forkProcess.toExecutionClassLoader(Some(TestInternals.filteredLoader))
-      val frameworks = project.testFrameworks
-        .flatMap(f => TestInternals.loadFramework(testLoader, f.names, logger))
-      def foundFrameworks = frameworks.map(_.name).mkString(", ")
-      logger.debug(s"Found frameworks: $foundFrameworks")
-
-      // Test arguments coming after `--` can only be used if only one mapping is found
-      val frameworkArgs = {
-        if (frameworkSpecificRawArgs.isEmpty) Nil
-        else {
-          frameworks match {
-            case Array(oneFramework) =>
-              val rawArgs = frameworkSpecificRawArgs.toArray
-              val cls = oneFramework.getClass.getName()
-              logger.debug(s"Test options '$rawArgs' assigned to the only found framework $cls'.")
-              List(Config.TestArgument(rawArgs, Some(Config.TestFramework(List(cls)))))
-            case _ =>
-              val ignoredArgs = frameworkSpecificRawArgs.mkString(" ")
-              logger.warn(
-                s"Framework-specific test options '${ignoredArgs}' are ignored because several frameworks were found: $foundFrameworks")
-              Nil
-          }
-        }
-      }
-
-      val analysis = state.results.lastSuccessfulResult(project).analysis().toOption.getOrElse {
-        logger.warn(s"Test execution is triggered but no compilation detected for ${projectName}.")
-        Analysis.empty
-      }
-
-      val discoveredTests = {
-        val tests = discoverTests(analysis, frameworks)
-        val excluded = project.testOptions.excludes.toSet
-        val ungroupedTests = tests.toList.flatMap {
-          case (framework, tasks) => tasks.map(t => (framework, t))
-        }
-        val (includedTests, excludedTests) = ungroupedTests.partition {
-          case (_, task) =>
-            val fqn = task.fullyQualifiedName()
-            !excluded(fqn) && testFilter(fqn)
-        }
-
-        if (logger.isVerbose) {
-          val allNames = ungroupedTests.map(_._2.fullyQualifiedName).mkString(", ")
-          val includedNames = includedTests.map(_._2.fullyQualifiedName).mkString(", ")
-          val excludedNames = excludedTests.map(_._2.fullyQualifiedName).mkString(", ")
-          logger.debug(s"Bloop found the following tests for $projectName: $allNames")
-          logger.debug(s"The following tests were included by the filter: $includedNames")
-          logger.debug(s"The following tests were excluded by the filter: $excludedNames")
-        }
-
-        DiscoveredTests(testLoader, includedTests.groupBy(_._1).mapValues(_.map(_._2)))
-      }
-
-      val args = project.testOptions.arguments ++ frameworkArgs
-      val env = state.commonOptions.env
-      TestInternals.executeTasks(cwd, forkProcess, discoveredTests, args, handler, logger, env)
+    projectsToTest.foldLeft(Task(state)) {
+      case (tsk, project) =>
+        for {
+          state <- tsk
+          tests <- getTests(state, project, frameworkSpecificRawArgs, testFilter)
+          (discoveredTests, frameworkArgs) = tests
+          args = project.testOptions.arguments ++ frameworkArgs
+          processConfig = JavaProcess(project.javaEnv, project.classpath)
+          env = state.commonOptions.env
+          exitStatus = TestInternals.executeTasks(cwd,
+                                                  processConfig,
+                                                  discoveredTests,
+                                                  args,
+                                                  handler,
+                                                  logger,
+                                                  env)
+        } yield state.mergeStatus(exitStatus)
     }
-
-    // Return the previous state, test execution doesn't modify it.
-    state.mergeStatus(ExitStatus.Ok)
   }
 
   /**
@@ -397,6 +352,71 @@ object Tasks {
 
   private[bloop] val handler =
     new EventHandler { override def handle(event: Event): Unit = () }
+
+  private def getTests(
+      state: State,
+      project: Project,
+      frameworkSpecificRawArgs: List[String],
+      testFilter: String => Boolean): Task[(DiscoveredTests, List[Config.TestArgument])] =
+    Task {
+      import state.logger
+      import bloop.util.JavaCompat.EnrichOptional
+      val projectName = project.name
+      val processConfig = JavaProcess(project.javaEnv, project.classpath)
+      val testLoader = processConfig.toExecutionClassLoader(Some(TestInternals.filteredLoader))
+      val frameworks = project.testFrameworks.flatMap(framework =>
+        TestInternals.loadFramework(testLoader, framework.names, logger))
+      val foundFrameworks = frameworks.map(_.name).mkString(", ")
+
+      // Test arguments coming after `--` can only be used if only one mapping is found
+      val frameworkArgs = {
+        if (frameworkSpecificRawArgs.isEmpty) Nil
+        else {
+          frameworks match {
+            case Array(oneFramework) =>
+              val rawArgs = frameworkSpecificRawArgs.toArray
+              val cls = oneFramework.getClass.getName()
+              logger.debug(s"Test options '$rawArgs' assigned to the only found framework $cls'.")
+              List(Config.TestArgument(rawArgs, Some(Config.TestFramework(List(cls)))))
+            case _ =>
+              val ignoredArgs = frameworkSpecificRawArgs.mkString(" ")
+              logger.warn(
+                s"Framework-specific test options '${ignoredArgs}' are ignored because several frameworks were found: $foundFrameworks")
+              Nil
+          }
+        }
+      }
+
+      logger.debug(s"Found frameworks: $foundFrameworks")
+      val analysis = state.results.lastSuccessfulResult(project).analysis().toOption.getOrElse {
+        logger.warn(s"Test execution is triggered but no compilation detected fro ${projectName}.")
+        Analysis.empty
+      }
+
+      val tests = discoverTests(analysis, frameworks)
+      val excluded = project.testOptions.excludes.toSet
+      val ungroupedTests = tests.toList.flatMap {
+        case (framework, tasks) => tasks.map(t => (framework, t))
+      }
+      val (includedTests, excludedTests) = ungroupedTests.partition {
+        case (_, task) =>
+          val fqn = task.fullyQualifiedName()
+          !excluded(fqn) && testFilter(fqn)
+      }
+
+      if (logger.isVerbose) {
+        val allNames = ungroupedTests.map(_._2.fullyQualifiedName).mkString(", ")
+        val includedNames = includedTests.map(_._2.fullyQualifiedName).mkString(", ")
+        val excludedNames = excludedTests.map(_._2.fullyQualifiedName).mkString(", ")
+        logger.debug(s"Bloop found the following tests for $projectName: $allNames")
+        logger.debug(s"The following tests were included by the filter: $includedNames")
+        logger.debug(s"The following tests were excluded by the filter: $excludedNames")
+      }
+
+      (DiscoveredTests(testLoader, includedTests.groupBy(_._1).mapValues(_.map(_._2))),
+       frameworkArgs)
+
+    }
 
   private[bloop] def discoverTests(analysis: CompileAnalysis,
                                    frameworks: Array[Framework]): Map[Framework, List[TaskDef]] = {
