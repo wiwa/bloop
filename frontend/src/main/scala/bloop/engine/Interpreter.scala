@@ -10,7 +10,7 @@ import bloop.io.{RelativePath, SourceWatcher}
 import bloop.io.Timer.timed
 import bloop.reporter.ReporterConfig
 import bloop.testing.TestInternals
-import bloop.engine.tasks.Tasks
+import bloop.engine.tasks.{Pipelined, Tasks}
 import bloop.Project
 import monix.eval.Task
 import monix.execution.misc.NonFatal
@@ -120,7 +120,7 @@ object Interpreter {
     state.build.getProjectFor(cmd.project) match {
       case Some(project) =>
         def doCompile(state: State): Task[State] =
-          Tasks.compile(state, project, config, sequential).map(_.mergeStatus(ExitStatus.Ok))
+          Pipelined.compile(state, project, config, sequential).map(_.mergeStatus(ExitStatus.Ok))
 
         val initialState = {
           if (cmd.incremental) Task(state)
@@ -162,7 +162,7 @@ object Interpreter {
       checkPrevious: Boolean,
       nextAction: String
   )(next: State => Task[State]): Task[State] = {
-    Tasks.compile(state, project, reporterConfig, checkPrevious, excludeRoot).flatMap { compiled =>
+    Pipelined.compile(state, project, reporterConfig, checkPrevious, excludeRoot).flatMap { compiled =>
       if (compiled.status != ExitStatus.CompilationError) next(compiled)
       else {
         Task.now {

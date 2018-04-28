@@ -7,7 +7,7 @@ import bloop.engine.{Dag, Leaf, Parent, State}
 import bloop.exec.Forker
 import bloop.io.AbsolutePath
 import bloop.logging.BspLogger
-import bloop.reporter.{BspReporter, LogReporter, Problem, Reporter, ReporterConfig}
+import bloop.reporter.{BspReporter, LogReporter, Problem, ReporterConfig}
 import bloop.testing.{DiscoveredTests, TestInternals}
 import bloop.{CompileInputs, Compiler, Project}
 import monix.eval.Task
@@ -78,7 +78,7 @@ object Tasks {
       }
 
       // FORMAT: OFF
-      CompileInputs(instance, compilerCache, sources, classpath, classesDir, target, scalacOptions, javacOptions, classpathOptions, result, reporter, logger)
+      CompileInputs(instance, compilerCache, sources, classpath, Array(), classesDir, target, scalacOptions, javacOptions, classpathOptions, result, reporter, None, None, logger)
       // FORMAT: ON
     }
 
