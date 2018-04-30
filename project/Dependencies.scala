@@ -21,7 +21,7 @@ object Dependencies {
   val monixVersion = "2.3.3"
   val metaconfigVersion = "0.7.0"
   val circeVersion = "0.9.3"
-  val scalaNativeVersion = "0.3.7"
+  val scalaNativeVersion = "0.3.999"
 
   import sbt.librarymanagement.syntax.stringToOrganization
   val zinc = "ch.epfl.scala" %% "zinc" % zincVersion
@@ -60,4 +60,5 @@ object Dependencies {
   val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
 
   val scalaNativeTools = "org.scala-native" %% "tools" % scalaNativeVersion
+  val scalaNativeTestRunner = "org.scala-native" %% "test-runner" % scalaNativeVersion
 }

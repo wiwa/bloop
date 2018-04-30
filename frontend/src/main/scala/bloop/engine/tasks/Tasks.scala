@@ -2,13 +2,14 @@ package bloop.engine.tasks
 
 import bloop.cli.ExitStatus
 import bloop.config.Config
+import bloop.config.Config.Platform
 import bloop.engine.caches.ResultsCache
 import bloop.engine.{Dag, Leaf, Parent, State}
 import bloop.exec.{JavaProcess, Process}
 import bloop.io.AbsolutePath
 import bloop.logging.BspLogger
 import bloop.reporter.{BspReporter, LogReporter, Problem, Reporter, ReporterConfig}
-import bloop.testing.{DiscoveredTests, TestInternals}
+import bloop.testing.{DiscoveredTests, TestExecutor, TestInternals}
 import bloop.{CompileInputs, Compiler, Project}
 import monix.eval.Task
 import sbt.internal.inc.{Analysis, AnalyzingCompiler, ConcreteAnalysisContents, FileAnalysisStore}
@@ -56,18 +57,20 @@ object Tasks {
       project: Project,
       reporterConfig: ReporterConfig,
       sequentialCompilation: Boolean,
-      excludeRoot: Boolean = false
+      excludeRoot: Boolean = false,
+      extraSources: Seq[AbsolutePath] = Seq.empty
   ): Task[State] = {
     import state.{logger, compilerCache}
-    def toInputs(project: Project, config: ReporterConfig, result: PreviousResult) = {
-      val instance = project.scalaInstance
-      val sources = project.sources
-      val classpath = project.classpath
-      val classesDir = project.classesDir
-      val target = project.out
-      val scalacOptions = project.scalacOptions
-      val javacOptions = project.javacOptions
-      val classpathOptions = project.classpathOptions
+    def toInputs(currentProject: Project, config: ReporterConfig, result: PreviousResult) = {
+      val instance = currentProject.scalaInstance
+      val sources = currentProject.sources ++ (if (currentProject == project) extraSources
+                                               else Seq.empty)
+      val classpath = currentProject.classpath
+      val classesDir = currentProject.classesDir
+      val target = currentProject.out
+      val scalacOptions = currentProject.scalacOptions
+      val javacOptions = currentProject.javacOptions
+      val classpathOptions = currentProject.classpathOptions
       val cwd = state.build.origin.getParent
       // Set the reporter based on the kind of logger to publish diagnostics
       val reporter = logger match {
@@ -283,19 +286,12 @@ object Tasks {
       case (tsk, project) =>
         for {
           state <- tsk
-          tests <- getTests(state, project, frameworkSpecificRawArgs, testFilter)
-          (discoveredTests, frameworkArgs) = tests
+          testsAndArgs <- getTests(state, project, frameworkSpecificRawArgs, testFilter)
+          (discoveredTests, frameworkArgs) = testsAndArgs
           args = project.testOptions.arguments ++ frameworkArgs
-          processConfig = JavaProcess(project.javaEnv, project.classpath)
-          env = state.commonOptions.env
-          exitStatus = TestInternals.executeTasks(cwd,
-                                                  processConfig,
-                                                  discoveredTests,
-                                                  args,
-                                                  handler,
-                                                  logger,
-                                                  env)
-        } yield state.mergeStatus(exitStatus)
+          testExecutor = getTestExecutor(project)
+          newState <- testExecutor.executeTests(state, project, cwd, discoveredTests, args, handler)
+        } yield newState
     }
   }
 
@@ -417,6 +413,11 @@ object Tasks {
        frameworkArgs)
 
     }
+
+  private def getTestExecutor(project: Project): TestExecutor = project.platform match {
+    case Platform.Native => ScalaNative
+    case _ => TestInternals
+  }
 
   private[bloop] def discoverTests(analysis: CompileAnalysis,
                                    frameworks: Array[Framework]): Map[Framework, List[TaskDef]] = {
