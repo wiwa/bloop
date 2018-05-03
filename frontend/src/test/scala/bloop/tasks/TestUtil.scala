@@ -220,6 +220,7 @@ object TestUtil {
       dependencies = dependencies.toArray,
       scalaInstance = scalaInstance,
       rawClasspath = classpath,
+      compileOptions = Config.CompileOptions.empty,
       classpathOptions = ClasspathOptionsUtil.boot(),
       classesDir = AbsolutePath(target),
       scalacOptions = Array.empty,

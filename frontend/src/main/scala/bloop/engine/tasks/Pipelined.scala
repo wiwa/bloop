@@ -5,6 +5,7 @@ import java.net.URI
 import java.util.concurrent.CompletableFuture
 
 import bloop.cli.ExitStatus
+import bloop.config.Config
 import bloop.engine.{Dag, ExecutionContext, Leaf, Parent, State}
 import bloop.io.AbsolutePath
 import bloop.logging.{BspLogger, Logger}
@@ -12,7 +13,7 @@ import bloop.reporter.{BspReporter, LogReporter, Problem, ReporterConfig}
 import bloop.{CompileInputs, Compiler, Project}
 import monix.eval.Task
 import bloop.monix.Java8Compat.{JavaCompletableFutureUtils, ScalaFutureUtils}
-import xsbti.compile.PreviousResult
+import xsbti.compile.{CompileOrder, PreviousResult}
 
 import scala.util.{Failure, Success, Try}
 
@@ -99,6 +100,12 @@ object Pipelined {
       val pickleReady = inputs.pickleReady
       val javaClasspath = inputs.javaClasspath
 
+      val compileOrder = project.compileOptions.order match {
+        case Config.Mixed => CompileOrder.Mixed
+        case Config.JavaThenScala => CompileOrder.JavaThenScala
+        case Config.ScalaThenJava => CompileOrder.ScalaThenJava
+      }
+
       // Set the reporter based on the kind of logger to publish diagnostics
       val reporter = logger match {
         case bspLogger: BspLogger =>
@@ -108,7 +115,7 @@ object Pipelined {
       }
 
       // FORMAT: OFF
-      CompileInputs(instance, compilerCache, sources, classpath, picklepath.toArray, classesDir, target, scalacOptions, javacOptions, classpathOptions, result, reporter, Some(pickleReady), javaClasspath, logger)
+      CompileInputs(instance, compilerCache, sources, classpath, picklepath.toArray, classesDir, target, scalacOptions, javacOptions, compileOrder, classpathOptions, result, reporter, Some(pickleReady), javaClasspath, logger)
       // FORMAT: ON
     }
 

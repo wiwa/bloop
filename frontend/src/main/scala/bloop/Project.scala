@@ -2,7 +2,6 @@ package bloop
 
 import bloop.exec.JavaEnv
 import bloop.io.{AbsolutePath, Paths}
-import bloop.io.Timer.timed
 import bloop.logging.Logger
 import xsbti.compile.ClasspathOptions
 import _root_.monix.eval.Task
@@ -17,6 +16,7 @@ final case class Project(
     dependencies: Array[String],
     scalaInstance: ScalaInstance,
     rawClasspath: Array[AbsolutePath],
+    compileOptions: Config.CompileOptions,
     classpathOptions: ClasspathOptions,
     classesDir: AbsolutePath,
     scalacOptions: Array[String],
@@ -86,6 +86,7 @@ object Project {
     val scalaJars = scala.jars.map(AbsolutePath.apply).toArray
     val instance = ScalaInstance(scala.organization, scala.name, scala.version, scalaJars, logger)
 
+    val compileOptions = project.compileOptions
     val classpathOptions = {
       val opts = project.classpathOptions
       ClasspathOptions.of(
@@ -108,6 +109,7 @@ object Project {
       project.dependencies.toArray,
       instance,
       project.classpath.map(AbsolutePath.apply).toArray,
+      compileOptions,
       classpathOptions,
       AbsolutePath(project.classesDir),
       scala.options.toArray,
