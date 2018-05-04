@@ -132,7 +132,8 @@ final class BloopBspServices(
         case (action, project) => Run(Commands.Compile(project.name), action)
       }
 
-      def report(p: Project, problems: Array[Problem], elapsedMs: Long) = {
+      def report(p: Project, problems: Array[Problem], t: Option[Throwable], elapsedMs: Long) = {
+        // TODO(jvican): Log spurious exception to client
         val count = bloop.reporter.Problem.count(problems)
         val id = toBuildTargetId(p)
         CompileReportItem(
@@ -153,9 +154,10 @@ final class BloopBspServices(
               case Compiler.Result.Empty => Nil
               case Compiler.Result.Cancelled(_) => Nil
               case Compiler.Result.Blocked(_) => Nil
-              case Compiler.Result.Failed(problems, elapsed) => List(report(p, problems, elapsed))
+              case Compiler.Result.Failed(problems, t, elapsed) =>
+                List(report(p, problems, t, elapsed))
               case Compiler.Result.Success(reporter, _, elapsed) =>
-                List(report(p, reporter.problems, elapsed))
+                List(report(p, reporter.problems, None, elapsed))
             }
         }
         Right(CompileReport(items))
