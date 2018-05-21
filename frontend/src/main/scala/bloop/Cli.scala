@@ -52,7 +52,7 @@ object Cli {
     ngContext.exit(exitStatus.code)
   }
 
-  import CliParsers.{CommandsMessages, CommandsParser, BaseMessages, OptionsParser}
+  import CliParsers._
   val commands: Seq[String] = CommandsMessages.messages.map(_._1)
   // Getting the name from the sbt generated metadata gives us `bloop-frontend` instead.
   val beforeCommandMessages: Messages[DefaultBaseCommand] = BaseMessages.copy(
