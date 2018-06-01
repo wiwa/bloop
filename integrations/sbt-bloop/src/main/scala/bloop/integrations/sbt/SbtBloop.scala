@@ -313,7 +313,7 @@ object PluginImplementation {
     }
 
     private final val allJson = sbt.GlobFilter("*.json")
-    private final val removeStaleProjects = { (allConfigDirs: Set[File]) =>
+    private final val removeStaleProjectsFrom = { (allConfigDirs: Set[File]) =>
       { (s: State, generatedFiles: Set[File]) =>
         val logger = s.globalLogging.full
         val allConfigs =
@@ -327,12 +327,27 @@ object PluginImplementation {
     }
 
     lazy val bloopInstall: Def.Initialize[Task[Unit]] = Def.taskDyn {
-      val filter = sbt.ScopeFilter(sbt.inAnyProject, sbt.inConfigurations(Compile, Test))
-      val allConfigDirs =
+      // First let's compute the projects that are eligible for `bloopInstall`
+      val eligibleProjects: List[ProjectRef] = {
+        val buildStructure = Keys.buildStructure.value
+        val allRefs = buildStructure.allProjectRefs
+        buildStructure.units.toList.flatMap {
+          case (build, unit) =>
+            val projectsWithBloop = unit.defined.values.filter(_.autoPlugins.contains(SbtBloop))
+            projectsWithBloop.map(p => ProjectRef(build, p.id))
+        }
+      }
+
+      // Let's remove all the configuration file for all the projects
+      val removeProjects = removeStaleProjectsFrom {
         BloopKeys.bloopConfigDir.?.all(sbt.ScopeFilter(sbt.inAnyProject))
           .map(_.flatMap(_.toList).toSet)
           .value
-      val removeProjects = removeStaleProjects(allConfigDirs)
+      }
+
+      // Now let's create a filter for all these projects and execute bloopGenerate in it
+      val projectFilter = sbt.inProjects(eligibleProjects: _*)
+      val filter = sbt.ScopeFilter(projectFilter, sbt.inConfigurations(Compile, Test))
       BloopKeys.bloopGenerate
         .all(filter)
         .map(_.toSet)
