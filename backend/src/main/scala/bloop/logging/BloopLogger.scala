@@ -65,7 +65,7 @@ final class BloopLogger(
   }
 
   private def printDebug(line: String): Unit = {
-    err.println(s"${RESET}${GREEN}[D]${RESET} $line")
+    out.println(s"${RESET}${GREEN}[D]${RESET} $line")
   }
 }
 
