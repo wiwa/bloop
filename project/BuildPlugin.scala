@@ -202,6 +202,8 @@ object BuildImplementation {
 
   import ch.epfl.scala.sbt.release.ReleaseEarlyPlugin.{autoImport => ReleaseEarlyKeys}
 
+
+  import bloop.integrations.sbt.{AutoImported => BloopKeys}
   final val globalSettings: Seq[Def.Setting[_]] = Seq(
     BuildKeys.schemaVersion := "2.3",
     Keys.testOptions in Test += sbt.Tests.Argument("-oD"),
@@ -219,6 +221,7 @@ object BuildImplementation {
 
   private final val ThisRepo = GitHub("scalacenter", "bloop")
   final val buildSettings: Seq[Def.Setting[_]] = Seq(
+    BloopKeys.bloopAllProjectsInBuild := true,
     Keys.organization := "ch.epfl.scala",
     Keys.updateOptions := Keys.updateOptions.value.withCachedResolution(true),
     Keys.scalaVersion := "2.12.6",

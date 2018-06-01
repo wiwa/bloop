@@ -48,6 +48,8 @@ object AutoImported {
     settingKey[File]("Resource managed for bloop")
   val bloopInternalClasspath: TaskKey[Seq[(File, File)]] =
     taskKey[Seq[(File, File)]]("Directory where to write the class files")
+  val bloopAllProjectsInBuild: SettingKey[Boolean] =
+    settingKey[Boolean]("Generate bloop configuration files for all projects")
   val bloopInstall: TaskKey[Unit] =
     taskKey[Unit]("Generate all bloop configuration files")
   val bloopGenerate: sbt.TaskKey[File] =
@@ -65,6 +67,7 @@ object PluginImplementation {
 
   // We create build setting proxies to global settings so that we get autocompletion (sbt bug)
   val buildSettings: Seq[Def.Setting[_]] = List(
+    BloopKeys.bloopAllProjectsInBuild := false,
     BloopKeys.bloopInstall := BloopKeys.bloopInstall.in(Global).value,
     // Bloop users: Do NEVER override this setting as a user if you want it to work
     BloopKeys.bloopAggregateSourceDependencies :=
@@ -328,13 +331,16 @@ object PluginImplementation {
 
     lazy val bloopInstall: Def.Initialize[Task[Unit]] = Def.taskDyn {
       // First let's compute the projects that are eligible for `bloopInstall`
-      val eligibleProjects: List[ProjectRef] = {
+      val eligibleProjects: Seq[ProjectRef] = {
         val buildStructure = Keys.buildStructure.value
-        val allRefs = buildStructure.allProjectRefs
-        buildStructure.units.toList.flatMap {
-          case (build, unit) =>
-            val projectsWithBloop = unit.defined.values.filter(_.autoPlugins.contains(SbtBloop))
-            projectsWithBloop.map(p => ProjectRef(build, p.id))
+        if (BloopKeys.bloopAllProjectsInBuild.in(ThisBuild).value) {
+          buildStructure.allProjectRefs
+        } else {
+          buildStructure.units.toList.flatMap {
+            case (build, unit) =>
+              val projectsWithBloop = unit.defined.values.filter(_.autoPlugins.contains(SbtBloop))
+              projectsWithBloop.map(p => ProjectRef(build, p.id))
+          }
         }
       }
 
