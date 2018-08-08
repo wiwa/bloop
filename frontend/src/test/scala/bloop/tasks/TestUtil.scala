@@ -73,8 +73,7 @@ object TestUtil {
   }
 
   def interpreterTask(a: Action, state: State): Task[State] = {
-    Interpreter
-      .execute(a, Task.now(state))
+    Interpreter.execute(a, Task.now(state))
   }
 
   def blockingExecute(a: Action, state: State, duration: Duration = Duration.Inf): State = {

@@ -41,7 +41,7 @@ final class SourceWatcher private (
     val allPaths = (files ++ dirs).asJava
     var watchingEnabled: Boolean = true
     val watcher = DirectoryWatcher.create(
-      allPaths,
+      dirs.asJava,
       new DirectoryChangeListener {
         // Define `isWatching` just for correctness
         override def isWatching: Boolean = watchingEnabled

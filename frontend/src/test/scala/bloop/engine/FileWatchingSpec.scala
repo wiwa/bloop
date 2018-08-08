@@ -1,13 +1,14 @@
 package bloop.engine
 
 import java.io.{ByteArrayOutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import bloop.Project
 import bloop.cli.{CliOptions, Commands, ExitStatus}
-import bloop.logging.BloopLogger
+import bloop.logging.{BloopLogger, RecordingLogger}
 import bloop.exec.JavaEnv
 import bloop.io.Paths.delete
 import bloop.tasks.{CompilationHelpers, TestUtil}
@@ -39,12 +40,23 @@ class FileWatchingSpec {
     val `C.scala` = "package p2\nclass C extends p0.A with p1.B"
   }
 
-  def addNonExistingSources(project: Project): Project = {
+  /**
+   * Adds non-existing source files and single source files to the project to make sure
+   * that the file watcher handles them correctly. Source files that don't exist must
+   * be ignored, and source files that do exist
+   * nee
+   *
+   * @param project
+   * @return
+   */
+  def addNonExistingAndSingleFileSources(project: Project): Project = {
     val currentSources = project.sources
     currentSources.headOption match {
       case Some(source) =>
         val fakeSource = source.getParent.resolve("fake-source-dir-scala")
-        project.copy(sources = currentSources ++ Array(fakeSource))
+        val singleFile = project.baseDirectory.resolve("x.scala")
+        Files.write(singleFile.underlying, "trait X".getBytes(StandardCharsets.UTF_8))
+        project.copy(sources = currentSources ++ List(fakeSource, singleFile))
       case None => project
     }
   }
@@ -60,8 +72,9 @@ class FileWatchingSpec {
     val rootProject0 = projects0
       .find(_.name == projectName)
       .getOrElse(sys.error(s"Project $projectName could not be found!"))
+
     // Add non-existing sources on purpose to the project to ensure it doesn't crash
-    val rootProject = addNonExistingSources(rootProject0)
+    val rootProject = addNonExistingAndSingleFileSources(rootProject0)
     val cleanAction = Run(Commands.Clean(rootProject.name :: Nil), Exit(ExitStatus.Ok))
     val state = TestUtil.blockingExecute(cleanAction, state0)
     val projects = state.build.projects
@@ -104,7 +117,8 @@ class FileWatchingSpec {
         // Start the compilation
         workerThread.start()
         // Wait for #1 compilation to finish
-        readCompilingLines(3, "Compiling 1 Scala source to", bloopOut)
+        readCompilingLines(1, "Compiling 2 Scala source to", bloopOut)
+        readCompilingLines(2, "Compiling 1 Scala source to", bloopOut)
         // Let's wait half a second so that file watching mode is enabled
         Thread.sleep(1500)
 
@@ -112,7 +126,8 @@ class FileWatchingSpec {
         val newSource = project.sources.head.resolve("D.scala").underlying
         Files.write(newSource, "object ForceRecompilation {}".getBytes("UTF-8"))
         // Wait for #2 compilation to finish
-        readCompilingLines(4, "Compiling 1 Scala source to", bloopOut)
+        readCompilingLines(1, "Compiling 2 Scala source to", bloopOut)
+        readCompilingLines(3, "Compiling 1 Scala source to", bloopOut)
         // Finish source file watching
         workerThread.interrupt()
     }
@@ -165,7 +180,7 @@ class FileWatchingSpec {
         val dirsToWatch = existingProjectSources.length
 
         // Wait for #1 compilation to finish
-        readCompilingLines(1, "Compiling 1 Scala source to", bloopOut)
+        readCompilingLines(1, "Compiling 2 Scala source to", bloopOut)
         readCompilingLines(1, "Compiling 6 Scala sources to", bloopOut)
         readCompilingLines(1, "+ is very personal", bloopOut)
         readCompilingLines(1, "+ Greeting.is personal: OK", bloopOut)
@@ -180,7 +195,8 @@ class FileWatchingSpec {
         Files.write(newSource.underlying, "object ForceRecompilation {}".getBytes("UTF-8"))
 
         // Wait for #2 compilation to finish
-        readCompilingLines(2, "Compiling 1 Scala source to", bloopOut)
+        readCompilingLines(1, "Compiling 2 Scala source to", bloopOut)
+        readCompilingLines(1, "Compiling 1 Scala source to", bloopOut)
         readCompilingLines(1, "Compiling 6 Scala sources to", bloopOut)
         readCompilingLines(2, "+ is very personal", bloopOut)
         readCompilingLines(2, "+ Greeting.is personal: OK", bloopOut)
