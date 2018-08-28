@@ -78,7 +78,7 @@ final class SourceWatcher private (
       }
 
       // Register the directory to be watched in a non-recursive fashion
-      watcher.register(dir, false)
+      //watcher.register(dir, false)
     }
 
     // Use Java's completable future because we can stop/complete it from the cancelable

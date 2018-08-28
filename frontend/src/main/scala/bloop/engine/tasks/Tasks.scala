@@ -1,5 +1,6 @@
 package bloop.engine.tasks
 
+import java.io.File
 import java.nio.file.{Files, Path}
 
 import bloop.cli.ExitStatus
@@ -10,13 +11,7 @@ import bloop.exec.Forker
 import bloop.io.{AbsolutePath, Paths}
 import bloop.logging.BspLogger
 import bloop.reporter.{BspReporter, LogReporter, Problem, ReporterConfig}
-import bloop.testing.{
-  DiscoveredTests,
-  LoggingEventHandler,
-  TestInternals,
-  TestSuiteEvent,
-  TestSuiteEventHandler
-}
+import bloop.testing.{DiscoveredTests, LoggingEventHandler, TestInternals, TestSuiteEvent, TestSuiteEventHandler}
 import bloop.{CompileInputs, Compiler, Project, ScalaInstance}
 import monix.eval.Task
 import sbt.internal.inc.bloop.CompileMode
@@ -123,6 +118,25 @@ object Tasks {
         case Some(instance) =>
           logger.debug(s"Scheduled compilation of '$project' starting at $currentTime.")
           val previous = state.results.lastSuccessfulResult(project)
+          import scala.collection.JavaConverters._
+
+
+          //println(s"Previous for ${project} ${previous}")
+          if (previous.analysis.isPresent) {
+            //println(s"Previous stamps ${previous.analysis().get().readStamps().getAllSourceStamps.asScala}")
+            val previousAnalysis = previous.analysis.get.asInstanceOf[sbt.internal.inc.Analysis]
+            val previousStamps = previousAnalysis.stamps
+
+            //println(s"Previous sources ${previousStamps.allSources.toSet}")
+/*            new UnderlyingChanges[File] {
+              private val inBoth = previousSources & sources
+              val removed = previousSources -- inBoth
+              val added = sources -- inBoth
+              val (changed, unmodified) =
+                inBoth.partition(f => !equivS.equiv(previous.source(f), stamps.source(f)))
+            }*/
+          }
+
           Compiler.compile(toInputs(project, instance, uniqueSources, reporterConfig, previous))
 
         case None =>

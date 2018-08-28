@@ -99,7 +99,7 @@ object Compiler {
       val compilerCache = new FreshCompilerCache
       val cacheFile = compileInputs.baseDirectory.resolve("cache").toFile
       val incOptions = {
-        if (!compileInputs.scalaInstance.isDotty) IncOptions.create()
+        if (!compileInputs.scalaInstance.isDotty) IncOptions.create().withApiDebug(true).withRelationsDebug(true)
         else Ecosystem.supportDotty(IncOptions.create())
       }
       val progress = Optional.empty[CompileProgress]

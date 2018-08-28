@@ -7,7 +7,7 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 
 import monix.eval.Task
-import sbt.internal.inc.{Analysis, InvalidationProfiler, Lookup, Stamper, Stamps, AnalysisCallback => AnalysisCallbackImpl}
+import sbt.internal.inc.{APIChanges, Analysis, InitialChanges, InvalidationProfiler, Lookup, RunProfiler, Stamper, Stamps, AnalysisCallback => AnalysisCallbackImpl}
 import sbt.util.Logger
 import xsbti.AnalysisCallback
 import xsbti.api.AnalyzedClass
@@ -72,8 +72,11 @@ object BloopIncremental {
     }
 
     val incremental = new BloopNameHashing(log, options, profiler.profileRun)
-
+    println(s"Sources ${sources}")
+    println(s"Previous sources ${previous.stamps.allSources}")
+    println(s"previous ${previous}")
     val initialChanges = incremental.detectInitialChanges(sources, previous, current, lookup)
+    //println(s"Added changes ${initialChanges.internalSrc.getAdded}, removed ${initialChanges.internalSrc.getRemoved}, modified ${initialChanges.internalSrc.getChanged}, unmodified ${initialChanges.internalSrc.getUnmodified}")
     val binaryChanges = new DependencyChanges {
       val modifiedBinaries = initialChanges.binaryDeps.toArray
       val modifiedClasses = initialChanges.external.allModified.toArray
@@ -83,6 +86,7 @@ object BloopIncremental {
       incremental.invalidateInitial(previous.relations, initialChanges)
 
     if (initialInvClasses.nonEmpty || initialInvSources.nonEmpty) {
+      println(s"initial invalidated sources ${initialInvSources}")
       if (initialInvSources == sources) incremental.log.debug("All sources are invalidated.")
       else {
         incremental.log.debug(

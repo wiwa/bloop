@@ -161,7 +161,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileWithScala2124 = {
+  def compileWithScala2124(): Unit = {
     val logger = new RecordingLogger
     val scalaInstance =
       ScalaInstance.resolve("org.scala-lang", "scala-compiler", "2.12.4", logger)
@@ -169,7 +169,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileWithScala2123 = {
+  def compileWithScala2123(): Unit = {
     val logger = new RecordingLogger
     val scalaInstance =
       ScalaInstance.resolve("org.scala-lang", "scala-compiler", "2.12.3", logger)
@@ -177,7 +177,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileWithScala21111 = {
+  def compileWithScala21111(): Unit = {
     val logger = new RecordingLogger
     val scalaInstance =
       ScalaInstance.resolve("org.scala-lang", "scala-compiler", "2.11.11", logger)
@@ -185,7 +185,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileTwoProjectsWithADependency = {
+  def compileTwoProjectsWithADependency(): Unit = {
     val projectsStructure = Map(
       "parent" -> Map("A.scala" -> ArtificialSources.`A.scala`),
       RootProject -> Map("B.scala" -> ArtificialSources.`B.scala`)
@@ -200,7 +200,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileOneProjectWithTwoDependencies = {
+  def compileOneProjectWithTwoDependencies(): Unit = {
     val projectsStructure = Map(
       "parent0" -> Map("A.scala" -> ArtificialSources.`A.scala`),
       "parent1" -> Map("B2.scala" -> ArtificialSources.`B2.scala`),
@@ -212,11 +212,21 @@ class CompilationTaskTest {
       state.build.projects.foreach { p =>
         assertTrue(s"${p.name} was not compiled", hasPreviousResult(p, state))
       }
+
+/*      val rootProject = state.build.getProjectFor(RootProject).get
+      val sourceC = rootProject.sources.head.resolve("C.scala").underlying
+      assert(Files.exists(sourceC))
+      Files.write(sourceC, "package p2; class C".getBytes)*/
+
+      val newLogger = new RecordingLogger
+      val action = Run(Commands.Compile(RootProject, incremental = true))
+      val state2 = TestUtil.blockingExecute(action, state.copy(logger = newLogger))
+      newLogger.dump()
     }
   }
 
   @Test
-  def unnecessaryProjectsAreNotCompiled = {
+  def unnecessaryProjectsAreNotCompiled(): Unit = {
     val projectsStructures = Map(
       "parent" -> Map("A.scala" -> ArtificialSources.`A.scala`),
       "unrelated" -> Map("B2.scala" -> ArtificialSources.`B2.scala`),
@@ -236,7 +246,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def noResultWhenCompilationFails = {
+  def noResultWhenCompilationFails(): Unit = {
     val projectsStructure = Map(RootProject -> Map("Error.scala" -> "iwontcompile"))
     checkAfterCleanCompilation(projectsStructure, Map.empty, failure = true) { (state: State) =>
       state.build.projects.foreach { p =>
@@ -246,7 +256,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileJavaProjectDependingOnScala: Unit = {
+  def compileJavaProjectDependingOnScala(): Unit = {
     object Sources {
       val `A.scala` = "package foo; object Greeting { def greeting: String = \"Hello, World!\" }"
       val `B.java` =
@@ -290,7 +300,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileDiamondLikeStructure = {
+  def compileDiamondLikeStructure(): Unit = {
     object Sources {
       val `A.scala` = "package p0\nclass A"
       val `B.scala` = "package p1\nimport p0.A\nclass B extends A"
@@ -323,7 +333,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileRepeatedSubTreeInProjects = {
+  def compileRepeatedSubTreeInProjects(): Unit = {
     object Sources {
       val `A.scala` = "package p0\nclass A"
       val `B.scala` = "package p1\nimport p0.A\nclass B extends A"
@@ -366,7 +376,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def failSequentialCompilation = {
+  def failSequentialCompilation(): Unit = {
     object Sources {
       val `A.scala` = "package p0\nclass A extends NonExistentClass"
       val `B.scala` = "package p1\nimport p0.A\nclass B extends A"
@@ -402,7 +412,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def compileWithDotty080RC1: Unit = {
+  def compileWithDotty080RC1(): Unit = {
     val logger = new RecordingLogger()
     val scalaInstance =
       ScalaInstance.resolve("ch.epfl.lamp", "dotty-compiler_0.8", "0.8.0-RC1", logger)
@@ -414,7 +424,7 @@ class CompilationTaskTest {
   }
 
   @Test
-  def incrementalAnalysisOutFile: Unit = {
+  def writeAnalysisFileByDefault(): Unit = {
     val testProject = "with-resources"
     val logger = new RecordingLogger()
     val state = TestUtil.loadTestProject(testProject).copy(logger = logger)

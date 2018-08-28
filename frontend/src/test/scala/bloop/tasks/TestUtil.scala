@@ -233,6 +233,10 @@ object TestUtil {
     Files.createDirectories(tempDir)
 
     val target = classesDir(baseDir, name)
+/*    if (Files.exists(target)) {
+      println("Creating directory for classes dir because it doesn't exist")
+      Files.createDirectories(target)
+    }*/
     val depsTargets = (dependencies.map(classesDir(baseDir, _))).map(AbsolutePath.apply).toList
     val classpath = depsTargets ++ scalaInstance.allJars.map(AbsolutePath.apply)
     val sourceDirectories = List(AbsolutePath(srcs))
