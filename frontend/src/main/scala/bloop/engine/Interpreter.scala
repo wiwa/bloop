@@ -131,11 +131,11 @@ object Interpreter {
       else CompileMode.Sequential
     }
 
-    val compileTask = {
+    val compileTask = state.flatMap { state =>
       val config = ReporterKind.toReporterConfig(cmd.reporter)
       if (cmd.pipelined)
-        Pipelined.compile(state0, project, config, deduplicateFailures, compilerMode, excludeRoot)
-      else Tasks.compile(state0, project, config, deduplicateFailures, compilerMode, excludeRoot)
+        Pipelined.compile(state, project, config, deduplicateFailures, compilerMode, excludeRoot)
+      else Tasks.compile(state, project, config, deduplicateFailures, compilerMode, excludeRoot)
     }
 
     compileTask.map(_.mergeStatus(ExitStatus.Ok))
