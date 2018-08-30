@@ -2,7 +2,9 @@ package build
 
 object Dependencies {
   val nailgunVersion = "0c8b937b"
-  val zincVersion = "1.2.1+76-109107b0"
+  //val zincVersion = "1.2.1+76-109107b0"
+  //val zincVersion = "1.2.1+63-906e830b"
+  val zincVersion = "1.2.1+67-d86f05dd"
   val bspVersion = "1.0.0-M4"
   val scalazVersion = "7.2.20"
   val coursierVersion = "1.1.0-M3"
@@ -14,7 +16,7 @@ object Dependencies {
   val sbtTestAgentVersion = "1.0.4"
   val junitVersion = "0.11"
   val graphvizVersion = "0.2.2"
-  val directoryWatcherVersion = "0.5.2-eade9dbe"
+  val directoryWatcherVersion = "0.8.1-SNAPSHOT"
   val mavenApiVersion = "3.5.2"
   val mavenAnnotationsVersion = "3.5"
   val mavenScalaPluginVersion = "3.2.2"
@@ -51,7 +53,7 @@ object Dependencies {
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val junit = "com.novocode" % "junit-interface" % junitVersion
   val graphviz = "guru.nidi" % "graphviz-java" % graphvizVersion
-  val directoryWatcher = "me.vican.jorge" % "directory-watcher" % directoryWatcherVersion
+  val directoryWatcher = "io.methvin" % "directory-watcher" % directoryWatcherVersion
 
   import sbt.Provided
   val mavenCore = "org.apache.maven" % "maven-core" % mavenApiVersion % Provided
