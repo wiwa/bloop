@@ -7,7 +7,7 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 
 import monix.eval.Task
-import sbt.internal.inc.{Analysis, Lookup, Stamper, Stamps, UnderlyingChanges, AnalysisCallback => AnalysisCallbackImpl}
+import sbt.internal.inc.{Analysis, InvalidationProfiler, Lookup, Stamper, Stamps, AnalysisCallback => AnalysisCallbackImpl}
 import sbt.util.Logger
 import xsbti.AnalysisCallback
 import xsbti.api.AnalyzedClass
@@ -49,17 +49,17 @@ object BloopIncremental {
     compileIncremental(sources, lookup, previous, current, compile, builder, log, options)
   }
 
-  private def compileIncremental(
+  def compileIncremental(
       sources: Iterable[File],
       lookup: Lookup,
       previous: Analysis,
-      stamps: ReadStamps,
+      current: ReadStamps,
       compile: CompileFunction,
       callbackBuilder: AnalysisCallbackImpl.Builder,
       log: sbt.util.Logger,
       options: IncOptions,
-/*      // TODO(jvican): Enable profiling of the invalidation algorithm down the road
-      profiler: InvalidationProfiler = InvalidationProfiler.empty*/
+      // TODO(jvican): Enable profiling of the invalidation algorithm down the road
+      profiler: InvalidationProfiler = InvalidationProfiler.empty
   )(implicit equivS: Equiv[Stamp]): Task[(Boolean, Analysis)] = {
     def manageClassfiles[T](options: IncOptions)(run: ClassFileManager => T): T = {
       import sbt.internal.inc.{ClassFileManager => ClassFileManagerImpl}
@@ -71,27 +71,9 @@ object BloopIncremental {
       result
     }
 
-    log.info(s"\nPrevious ${previous}\n")
     val setOfSources = sources.toSet
-    sources.foreach { source =>
-      log.info(s"Timestamp ${source.getAbsolutePath} ${source.lastModified()}")
-    }
-
-    val sourceChanges = lookup.changedSources(previous).getOrElse {
-      val previousSources = previous.relations.allSources.toSet
-      log.info(s"Previous sources ${previousSources}")
-      new UnderlyingChanges[File] {
-        private val inBoth = previousSources & setOfSources
-        val removed = previousSources -- inBoth
-        val added = setOfSources -- inBoth
-        val (changed, unmodified) =
-          inBoth.partition(f => !equivS.equiv(previous.stamps.source(f), stamps.source(f)))
-        log.info(s"Changed ${changed}, added ${added}, ${removed}")
-      }
-    }
-
-    val incremental = new BloopNameHashing(log, options)
-    val initialChanges = incremental.changedInitial(setOfSources, previous, stamps, lookup)
+    val incremental = new BloopNameHashing(log, options, profiler.profileRun)
+    val initialChanges = incremental.detectInitialChanges(setOfSources, previous, current, lookup)
     val binaryChanges = new DependencyChanges {
       val modifiedBinaries = initialChanges.binaryDeps.toArray
       val modifiedClasses = initialChanges.external.allModified.toArray
