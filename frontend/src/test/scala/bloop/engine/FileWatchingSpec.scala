@@ -50,7 +50,7 @@ class FileWatchingSpec {
           "Compiling 1 Scala source to" -> 4
         )
 
-        checkFileWatchingIteration(load, RootProject, cmd, signalMsg, messagesToCheck)
+        checkFileWatchingIteration(load, RootProject, cmd, signalMsg, messagesToCheck, true)
     }
   }
 
@@ -151,6 +151,8 @@ class FileWatchingSpec {
       Files.write(newSource.underlying, "object ForceRecompilation {}".getBytes("UTF-8"))
 
       isIterationOver(observable, 2).flatMap { _ =>
+        Thread.sleep(200)
+
         // Write the contents of a source back to the same source and force another test execution
         Files.write(singleFile.underlying, "object ForceRecompilation2 {}".getBytes("UTF-8"))
 

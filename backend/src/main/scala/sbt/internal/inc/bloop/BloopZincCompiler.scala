@@ -110,6 +110,10 @@ object BloopZincCompiler {
         val compiler = BloopHighLevelCompiler(config, logger)
         val lookup = new LookupImpl(config, previousSetup)
         val analysis = invalidateAnalysisFromSetup(config.currentSetup, previousSetup, incrementalOptions.ignoredScalacOptions(), setOfSources, prev)
+        import scala.collection.JavaConverters._
+        println("DIFFFFFF")
+        println(analysis.readSourceInfos().getAllSourceInfos.asScala.map(_._2).toList)
+        println(analysis.readStamps().getAllSourceStamps.asScala.toList)
 
         // Scala needs the explicit type signature to infer the function type arguments
         val compile: (Set[File], DependencyChanges, AnalysisCallback, ClassFileManager) => Task[Unit] = compiler.compile(_, _, _, _, compileMode)

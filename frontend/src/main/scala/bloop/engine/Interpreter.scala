@@ -150,8 +150,16 @@ object Interpreter {
       case Some(project) =>
         if (!cmd.watch) runCompile(cmd, state, project, deduplicateFailures)
         else watch(project, state)(runCompile(cmd, _, project, deduplicateFailures))
+        //else watch(project, state)(simulation(_))
       case None => Task.now(reportMissing(cmd.project :: Nil, state))
     }
+  }
+
+  def simulation(state: State): Task[State] = Task {
+    println("Simulating compilation...")
+    Thread.sleep(1000)
+    println("Simulating completed.")
+    state
   }
 
   private def showProjects(cmd: Commands.Projects, state: State): Task[State] = Task {
