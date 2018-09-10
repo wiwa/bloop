@@ -47,6 +47,8 @@ object Tasks {
         case Compiler.Result.Cancelled(ms) => s"${project.name} (cancelled, lasted ${ms}ms)"
         case Compiler.Result.Success(_, _, ms) => s"${project.name} (success ${ms}ms)"
         case Compiler.Result.Blocked(on) => s"${project.name} (blocked on ${on.mkString(", ")})"
+        case Compiler.Result.GlobalError(problem) =>
+          s"${project.name} (failed with global error ${problem})"
         case Compiler.Result.Failed(problems, t, ms) =>
           val extra = t match {
             case Some(t) => s"exception '${t.getMessage}', "
@@ -102,7 +104,7 @@ object Tasks {
       }
 
       // FORMAT: OFF
-      CompileInputs(instance, compilerCache, sources, classpath, Array(), classesDir, target, scalacOptions, javacOptions, compileOrder, classpathOptions, result, reporter, compileMode, logger)
+      CompileInputs(instance, compilerCache, sources, classpath, Array(), classesDir, target, scalacOptions, javacOptions, compileOrder, classpathOptions, result, reporter, compileMode)
       // FORMAT: ON
     }
 

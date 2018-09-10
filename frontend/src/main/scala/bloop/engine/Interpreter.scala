@@ -133,9 +133,18 @@ object Interpreter {
 
     val compileTask = state.flatMap { state =>
       val config = ReporterKind.toReporterConfig(cmd.reporter)
-      if (cmd.pipelined)
+      /*      if (cmd.pipelined)
         Pipelined.compile(state, project, config, deduplicateFailures, compilerMode, excludeRoot)
-      else Tasks.compile(state, project, config, deduplicateFailures, compilerMode, excludeRoot)
+      else Tasks.compile(state, project, config, deduplicateFailures, compilerMode, excludeRoot)*/
+      Pipelined.compile(
+        state,
+        project,
+        config,
+        deduplicateFailures,
+        compilerMode,
+        cmd.pipelined,
+        excludeRoot
+      )
     }
 
     compileTask.map(_.mergeStatus(ExitStatus.Ok))
@@ -200,7 +209,7 @@ object Interpreter {
           val cwd = cmd.cliOptions.common.workingPath
           compileAnd(cmd, state, project, false, sequential, "`test`") { state =>
             val handler = new LoggingEventHandler(state.logger)
-            Tasks.test( state, project, cwd, cmd.includeDependencies, cmd.args, testFilter, handler)
+            Tasks.test(state, project, cwd, cmd.includeDependencies, cmd.args, testFilter, handler)
           }
         }
 
