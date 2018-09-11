@@ -78,7 +78,7 @@ object State {
    */
   def setCores(state: State, threads: Int): State = {
     state.logger.info(s"Reconfiguring the number of bloop threads to $threads.")
-    ExecutionContext.executor.setCorePoolSize(threads)
+    //ExecutionContext.executor.setCorePoolSize(threads)
     state
   }
 

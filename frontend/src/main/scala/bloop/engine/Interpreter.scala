@@ -283,9 +283,10 @@ object Interpreter {
   }
 
   private def configure(cmd: Commands.Configure, state: State): Task[State] = Task {
-    if (cmd.threads != ExecutionContext.executor.getCorePoolSize)
+/*    if (cmd.threads != ExecutionContext.executor.getCorePoolSize)
       State.setCores(state, cmd.threads)
-    else state
+    else state*/
+    state
   }
 
   private def clean(cmd: Commands.Clean, state: State): Task[State] = {

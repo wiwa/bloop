@@ -72,7 +72,7 @@ object Commands {
 
   case class Configure(
       @HelpMessage("Set the number of threads used to compile and test all projects.")
-      threads: Int = ExecutionContext.executor.getCorePoolSize,
+      threads: Int = 4,
       @Recurse cliOptions: CliOptions = CliOptions.default
   ) extends RawCommand
 
