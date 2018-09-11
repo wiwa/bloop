@@ -1,4 +1,4 @@
-package bloop.monix
+package monix.reactive.internal.consumers.bloop
 
 import monix.eval.{Callback, Task}
 import monix.execution.Ack.{Continue, Stop}
@@ -30,10 +30,10 @@ final class FoldLeftAsyncConsumer[A, R](
         try {
           val task = f(state, elem).transform(update => {
             state = update
-            Continue: Continue
+            Continue
           }, error => {
             onError(error)
-            Stop: Stop
+            Stop
           })
 
           val future = task.runAsync
@@ -66,6 +66,7 @@ final class FoldLeftAsyncConsumer[A, R](
 
     (out, cancelable)
   }
+/*
 
   override def apply(source: Observable[A]): Task[R] = {
     Task.create[R] { (scheduler, cb) =>
@@ -74,6 +75,7 @@ final class FoldLeftAsyncConsumer[A, R](
       CompositeCancelable(sourceSubscription, consumerSubscription)
     }
   }
+*/
 
 }
 
