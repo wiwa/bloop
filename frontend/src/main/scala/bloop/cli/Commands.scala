@@ -6,7 +6,7 @@ import java.nio.file.Path
 import bloop.cli.CliParsers.CommandsMessages
 import bloop.engine.ExecutionContext
 import bloop.io.AbsolutePath
-import caseapp.{CommandName, ExtraName, HelpMessage, Recurse}
+import caseapp.{CommandName, ExtraName, HelpMessage, Hidden, Recurse}
 import caseapp.core.CommandMessages
 
 object Commands {
@@ -112,8 +112,10 @@ object Commands {
       incremental: Boolean = true,
       @HelpMessage("Pipeline the compilation of modules in your build. By default, false.")
       pipelined: Boolean = false,
+      @Hidden
       @HelpMessage("Parallelize the compilation of modules in your build. By default, false.")
       parallel: Boolean = false,
+      @Hidden
       @HelpMessage(
         s"Pick how many workers will compile every project in parallel. By default, ${ParallelBatches.Default.number}.")
       parallelBatches: ParallelBatches = ParallelBatches.Default,
@@ -136,8 +138,10 @@ object Commands {
       incremental: Boolean = true,
       @HelpMessage("Pipeline the compilation of modules in your build. By default, false.")
       pipelined: Boolean = false,
+      @Hidden
       @HelpMessage("Parallelize the compilation of modules in your build. By default, false.")
       parallel: Boolean = false,
+      @Hidden
       @HelpMessage(
         s"Pick how many workers will compile every project in parallel. By default, ${ParallelBatches.Default.number}.")
       parallelBatches: ParallelBatches = ParallelBatches.Default,
@@ -162,8 +166,10 @@ object Commands {
       incremental: Boolean = true,
       @HelpMessage("Pipeline the compilation of modules in your build. By default, false.")
       pipelined: Boolean = false,
+      @Hidden
       @HelpMessage("Parallelize the compilation of modules in your build. By default, false.")
       parallel: Boolean = false,
+      @Hidden
       @HelpMessage(
         s"Pick how many workers will compile every project in parallel. By default, ${ParallelBatches.Default.number}.")
       parallelBatches: ParallelBatches = ParallelBatches.Default,
@@ -186,8 +192,10 @@ object Commands {
       incremental: Boolean = true,
       @HelpMessage("Pipeline the compilation of modules in your build. By default, false.")
       pipelined: Boolean = false,
+      @Hidden
       @HelpMessage("Parallelize the compilation of modules in your build. By default, false.")
       parallel: Boolean = false,
+      @Hidden
       @HelpMessage(
         s"Pick how many workers will compile every project in parallel. By default, ${ParallelBatches.Default.number}.")
       parallelBatches: ParallelBatches = ParallelBatches.Default,
@@ -216,8 +224,10 @@ object Commands {
       incremental: Boolean = true,
       @HelpMessage("Pipeline the compilation of modules in your build. By default, false.")
       pipelined: Boolean = false,
+      @Hidden
       @HelpMessage("Parallelize the compilation of modules in your build. By default, false.")
       parallel: Boolean = false,
+      @Hidden
       @HelpMessage(
         s"Pick how many workers will compile every project in parallel. By default, ${ParallelBatches.Default.number}.")
       parallelBatches: ParallelBatches = ParallelBatches.Default,
