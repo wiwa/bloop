@@ -1,16 +1,22 @@
 package bloop.engine.tasks
 
+import java.io.File
+import java.util.Optional
+
 import bloop.cli.ExitStatus
 import bloop.data.Project
 import bloop.engine._
+import bloop.engine.caches.ResultsCache
 import bloop.engine.tasks.compilation.{CompileExceptions, CompileGraph, FinalCompileResult}
 import bloop.io.{AbsolutePath, Paths}
 import bloop.logging.{BspLogger, Logger}
 import bloop.reporter._
 import bloop.{CompileInputs, Compiler, ScalaInstance}
 import monix.eval.Task
+import sbt.internal.inc.Locate
 import sbt.internal.inc.bloop.CompileMode
 import sbt.util.InterfaceUtil
+import xsbti.compile.{CompileAnalysis, DefinesClass, PerClasspathEntryLookup, PreviousResult}
 
 object CompilationTask {
   private val dateFormat = new java.text.SimpleDateFormat("HH:mm:ss.SSS")
@@ -40,6 +46,7 @@ object CompilationTask {
   ): Task[State] = {
     val cwd = state.build.origin.getParent
     import state.{logger, compilerCache}
+    val lookup = new ResultsLookup(state.results)
     def compile(graphInputs: CompileGraph.Inputs): Task[Compiler.Result] = {
       val project = graphInputs.project
       sourcesAndInstanceFrom(project) match {
@@ -88,7 +95,8 @@ object CompilationTask {
             project.classpathOptions,
             previous,
             reporter,
-            compileMode
+            compileMode,
+            lookup
           )
 
           Compiler.compile(backendInputs).map { result =>
@@ -198,6 +206,21 @@ object CompilationTask {
             Left(Compiler.Result.GlobalError(Feedback.missingInstanceForJavaCompilation(project)))
         }
     }
+  }
+
+  private final class ResultsLookup(results: ResultsCache) extends PerClasspathEntryLookup {
+    import bloop.util.JavaCompat.EnrichOption
+    private val cache = results.allSuccessful.collect {
+      case (project, result) if result.analysis().isPresent() =>
+        (project.classesDir.toFile, result.analysis().get)
+    }.toMap
+
+    override def analysis(classpathEntry: File): Optional[CompileAnalysis] =
+      cache.get(classpathEntry).toOptional
+
+    import sbt.internal.inc.FileValueCache
+    override def definesClass(classpathEntry: File): DefinesClass =
+      FileValueCache(Locate.definesClass(_)).get(classpathEntry)
   }
 
   private def createCompilationReporter(

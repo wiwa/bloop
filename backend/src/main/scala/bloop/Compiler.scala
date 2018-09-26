@@ -29,18 +29,11 @@ case class CompileInputs(
     classpathOptions: ClasspathOptions,
     previousResult: PreviousResult,
     reporter: Reporter,
-    mode: CompileMode
+    mode: CompileMode,
+    lookup: PerClasspathEntryLookup
 )
 
 object Compiler {
-  private final class ZincClasspathEntryLookup(previousResult: PreviousResult)
-      extends PerClasspathEntryLookup {
-    override def analysis(classpathEntry: File): Optional[CompileAnalysis] =
-      previousResult.analysis
-    override def definesClass(classpathEntry: File): DefinesClass =
-      Locate.definesClass(classpathEntry)
-  }
-
   sealed trait Result
   object Result {
     final case object Empty extends Result with CacheHashCode
@@ -102,9 +95,9 @@ object Compiler {
     }
 
     def getSetup(compileInputs: CompileInputs): Setup = {
+      import compileInputs.lookup
       val skip = false
       val empty = Array.empty[T2[String, String]]
-      val lookup = new ZincClasspathEntryLookup(compileInputs.previousResult)
       val reporter = compileInputs.reporter
       val compilerCache = new FreshCompilerCache
       val cacheFile = compileInputs.baseDirectory.resolve("cache").toFile
