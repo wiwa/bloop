@@ -34,10 +34,10 @@ matrix:
   PUBLISH_ARTIFACTS:
     - bin/sbt-ci-publish.sh \
          "show version" \
-          "set pgpPublicRing in Global := file(\"/drone/.gnupg/pubring.asc\")" \
-          "set pgpSecretRing in Global := file(\"/drone/.gnupg/secring.asc\")" \
-          "docs/ghpagesPushSite" \
-          "releaseBloop"
+                       #"set pgpPublicRing in Global := file(\"/drone/.gnupg/pubring.asc\")" \
+                       #"set pgpSecretRing in Global := file(\"/drone/.gnupg/secring.asc\")" \
+                       #"docs/ghpagesPushSite" \
+                       #"releaseBloop"
 
   RELEASE_GITHUB_BREW:
     - bin/sbt-ci.sh \
@@ -80,7 +80,7 @@ pipeline:
       - /cache:/cache
     cache_key: [ DRONE_REPO_OWNER, DRONE_REPO_NAME, DRONE_BRANCH ]
     when:
-      ref: [ refs/heads/master, refs/tags/*, refs/pull/*/head ]
+      #ref: [ refs/heads/master, refs/tags/*, refs/pull/*/head ]
       matrix:
         OS: linux
 
@@ -147,7 +147,7 @@ pipeline:
     volumes:
       - /scalacenter:/keys
     when:
-      ref: [ refs/heads/master, refs/tags/* ]
+      #ref: [ refs/heads/master, refs/tags/* ]
       event: [ push, tag, deployment ]
       status: success
       matrix:
