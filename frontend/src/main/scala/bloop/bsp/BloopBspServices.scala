@@ -1,7 +1,7 @@
 package bloop.bsp
 
 import java.io.InputStream
-import java.nio.file.{FileSystems, PathMatcher}
+import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -12,7 +12,7 @@ import bloop.engine.tasks.Tasks
 import bloop.engine.tasks.toolchains.{ScalaJsToolchain, ScalaNativeToolchain}
 import bloop.engine._
 import bloop.internal.build.BuildInfo
-import bloop.io.{AbsolutePath, RelativePath}
+import bloop.io.{AbsolutePath, RegularFileWatcher, RelativePath}
 import bloop.logging.{BspServerLogger, DebugFilter}
 import bloop.testing.{BspLoggingEventHandler, TestInternals}
 import monix.eval.Task
@@ -22,8 +22,10 @@ import scala.meta.jsonrpc.{JsonRpcClient, Response => JsonRpcResponse, Services 
 import xsbti.Problem
 import ch.epfl.scala.bsp
 import ch.epfl.scala.bsp.ScalaBuildTarget.encodeScalaBuildTarget
+import monix.execution.CancelableFuture
 import monix.execution.atomic.AtomicInt
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 
 final class BloopBspServices(
@@ -65,6 +67,36 @@ final class BloopBspServices(
 
   // Internal state, initial value defaults to
   @volatile private var currentState: State = callSiteState
+
+  private val backgroundTasks = new TrieMap[CancelableFuture[_], Boolean]()
+
+  def startConfigFileWatcher(configDir: AbsolutePath, state: State): Task[Unit] = {
+    val logger = bspForwarderLogger
+    val configFiles = BuildLoader
+      .readConfigurationFilesInBase(configDir, logger)
+      .map(_.path.underlying)
+
+    val watcher = RegularFileWatcher(
+      BuildLoader.JsonFilePattern,
+      configFiles,
+      s"File watching on configuration files in ${configDir.syntax} was successfully cancelled",
+      isUserFacing = false,
+      logger
+    )
+
+    val action = { (state: State, changed: List[Path]) =>
+      Task {
+        endpoints.BuildTarget.didChange.notify(
+          bsp.DidChangeBuildTarget(
+            changes = List()
+          )
+        )(client);
+        state
+      }
+    }
+
+    watcher.watch(state, action).map(_ => ())
+  }
 
   /** Returns the final state after BSP commands that can be cached by bloop. */
   def stateAfterExecution: State = {
@@ -206,7 +238,8 @@ final class BloopBspServices(
             case Compiler.Result.Blocked(_) => Nil
             case Compiler.Result.Success(_, _, _) => Nil
             case Compiler.Result.GlobalError(problem) => List(problem)
-            case Compiler.Result.Cancelled(problems, elapsed) => Nil
+            case Compiler.Result.Cancelled(problems, elapsed) =>
+              Nil
               List(reportError(p, problems, elapsed))
             case Compiler.Result.Failed(problems, t, elapsed) =>
               val acc = List(reportError(p, problems, elapsed))

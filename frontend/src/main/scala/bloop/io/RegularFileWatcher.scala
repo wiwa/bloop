@@ -2,7 +2,6 @@ package bloop.io
 
 import java.nio.file.{Files, Path}
 
-import bloop.data.Project
 import bloop.bsp.BspServer
 import bloop.engine.{ExecutionContext, State}
 import bloop.logging.{DebugFilter, Logger, Slf4jAdapter}
@@ -15,25 +14,30 @@ import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.{MulticastStrategy, Observable}
 
-final class SourceWatcher private (
-    project: Project,
+final class RegularFileWatcher private[io] (
+    fileNameGlob: String,
     dirs: Seq[Path],
     files: Seq[Path],
+    cancellationMsg: String,
+    isUserFacing: Boolean,
     logger: Logger
 ) {
   import java.nio.file.Files
   private val slf4jLogger = new Slf4jAdapter(logger)
-
   private implicit val logContext: DebugFilter = DebugFilter.FileWatching
 
-  def watch(state0: State, action: State => Task[State]): Task[State] = {
+  type WatchAction = (State, List[Path]) => Task[State]
+  def watch(state0: State, action: WatchAction): Task[State] = {
     val ngout = state0.commonOptions.ngout
     def runAction(state: State, event: DirectoryChangeEvent): Task[State] = {
-      // Someone that wants this to be supported by Windows will need to make it work for all terminals
-      if (!BspServer.isWindows)
-        logger.info("\u001b[H\u001b[2J") // Clean the terminal before acting on the file event action
+      if (isUserFacing) {
+        // Someone that wants this to be supported by Windows will need to make it work for all terminals
+        if (!BspServer.isWindows)
+          logger.info("\u001b[H\u001b[2J") // Clean the terminal before acting on the file event action
+      }
+
       logger.debug(s"A ${event.eventType()} in ${event.path()} has triggered an event")
-      action(state)
+      action(state, List(event.path()))
     }
 
     val (observer, observable) =
@@ -53,11 +57,17 @@ final class SourceWatcher private (
 
       override def onEvent(event: DirectoryChangeEvent): Unit = {
         val targetFile = event.path()
-        val targetPath = targetFile.toFile.getAbsolutePath()
-        if (Files.isRegularFile(targetFile) &&
-            (targetPath.endsWith(".scala") || targetPath.endsWith(".java"))) {
-          observer.onNext(event)
-          ()
+        try {
+          val targetFileName = targetFile.getFileName
+          val matcher = targetFile.getFileSystem.getPathMatcher(s"glob:$fileNameGlob")
+          if (Files.isRegularFile(targetFile) && matcher.matches(targetFileName)) {
+            observer.onNext(event)
+            ()
+          }
+        } catch {
+          case t: Throwable =>
+            println(t)
+            t.printStackTrace()
         }
       }
     }
@@ -83,8 +93,7 @@ final class SourceWatcher private (
       watchingEnabled = false
       watcherHandle.complete(null)
       observer.onComplete()
-      ngout.println(
-        s"File watching on '${project.name}' and dependent projects has been successfully cancelled")
+      ngout.println(cancellationMsg)
     }
 
     val fileEventConsumer = {
@@ -108,15 +117,40 @@ final class SourceWatcher private (
     val filesCount = files.size
     val dirsCount = dirs.size
     val andFiles = if (filesCount == 0) "" else s" and $filesCount files"
-    logger.info(s"Watching $dirsCount directories$andFiles... (press Ctrl-C to interrupt)")
+    val msg = s"Watching $dirsCount directories$andFiles... (press Ctrl-C to interrupt)"
+    if (isUserFacing) logger.info(msg)
+    else logger.debug(msg)
   }
 }
 
-object SourceWatcher {
-  def apply(project: Project, paths0: Seq[Path], logger: Logger): SourceWatcher = {
-    val existingPaths = paths0.distinct.filter(p => Files.exists(p))
+object RegularFileWatcher {
+  def apply(
+      fileNameGlob: String,
+      paths: Seq[Path],
+      cancellationMsg: String,
+      isUserFacing: Boolean,
+      logger: Logger
+  ): RegularFileWatcher = {
+    val (files, dirs) = RegularFileWatcher.filesAndDirsFrom(paths)
+    new RegularFileWatcher(fileNameGlob, dirs, files, cancellationMsg, isUserFacing, logger)
+  }
+
+  private[io] def filesAndDirsFrom(paths: Seq[Path]): (Seq[Path], Seq[Path]) = {
+    val existingPaths = paths.distinct.filter(p => Files.exists(p))
     val dirs = existingPaths.filter(p => Files.isDirectory(p))
     val files = existingPaths.filter(p => Files.isRegularFile(p))
-    new SourceWatcher(project, dirs, files, logger)
+    (files, dirs)
+  }
+}
+
+object SourceFileWatcher {
+  def apply(
+      paths: Seq[Path],
+      cancellationMsg: String,
+      isUserFacing: Boolean,
+      logger: Logger
+  ): RegularFileWatcher = {
+    val (files, dirs) = RegularFileWatcher.filesAndDirsFrom(paths)
+    new RegularFileWatcher("*.{scala,java}", dirs, files, cancellationMsg, isUserFacing, logger)
   }
 }

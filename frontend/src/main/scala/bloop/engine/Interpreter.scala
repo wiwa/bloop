@@ -1,11 +1,13 @@
 package bloop.engine
 
+import java.nio.file.Path
+
 import bloop.CompileMode
 import bloop.bsp.BspServer
 import bloop.cli.{BspProtocol, Commands, ExitStatus, OptimizerConfig, ReporterKind}
 import bloop.cli.CliParsers.CommandsMessages
 import bloop.cli.completion.{Case, Mode}
-import bloop.io.{AbsolutePath, RelativePath, SourceWatcher}
+import bloop.io.{AbsolutePath, RegularFileWatcher, RelativePath, SourceFileWatcher}
 import bloop.logging.DebugFilter
 import bloop.testing.{LoggingEventHandler, TestInternals}
 import bloop.engine.tasks.{CompilationTask, LinkTask, Tasks}
@@ -103,8 +105,10 @@ object Interpreter {
   private[bloop] def watch(project: Project, state: State)(f: State => Task[State]): Task[State] = {
     val reachable = Dag.dfs(state.build.getDagFor(project))
     val allSources = reachable.iterator.flatMap(_.sources.toList).map(_.underlying)
-    val watcher = SourceWatcher(project, allSources.toList, state.logger)
-    val fg = (state: State) =>
+    val watcherEndMsg =
+      s"File watching on '${project.name}' and dependent projects was successfully cancelled"
+    val watcher = SourceFileWatcher(allSources.toList, watcherEndMsg, true, state.logger)
+    val fg = (state: State, changed: List[Path]) =>
       f(state).map { state =>
         watcher.notifyWatch()
         State.stateCache.updateBuild(state)
@@ -113,7 +117,7 @@ object Interpreter {
     if (!BspServer.isWindows)
       state.logger.info("\u001b[H\u001b[2J")
     // Force the first execution before relying on the file watching task
-    fg(state).flatMap(newState => watcher.watch(newState, fg))
+    fg(state, Nil).flatMap(newState => watcher.watch(newState, fg))
   }
 
   private def runCompile(
