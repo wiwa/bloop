@@ -31,13 +31,16 @@ class ScalaJsToolchainSpec {
     TestUtil.loadTestProject("cross-test-build-1.0", _.map(setUpScalajs))
   }
 
-  @Test def canLinkScalaJsProject(): Unit = {
+  @Test def canLinkScalaJsProjectIncrementally(): Unit = {
     val logger = new RecordingLogger
     val state = state0.copy(logger = logger)
     val action = Run(Commands.Link(project = MainProject))
     val resultingState = TestUtil.blockingExecute(action, state, maxDuration)
+    val resultingState2 = TestUtil.blockingExecute(action, resultingState, maxDuration)
 
     assertTrue(s"Linking failed: ${logger.getMessages.mkString("\n")}", resultingState.status.isOk)
+    assertTrue(s"Linking failed: ${logger.getMessages.mkString("\n")}", resultingState2.status.isOk)
+    logger.dump()
     logger.getMessages.assertContain("Generated JavaScript file '", atLevel = "info")
   }
 

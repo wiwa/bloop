@@ -9,6 +9,7 @@ import org.scalajs.core.tools.io.{
   FileVirtualBinaryFile,
   FileVirtualJSFile,
   FileVirtualScalaJSIRFile,
+  IRFileCache,
   MemVirtualJSFile,
   VirtualJSFile,
   VirtualJarFile
@@ -50,6 +51,7 @@ object JsBridge {
   private def toIrJar(jar: Path) =
     IRContainer.Jar(new FileVirtualBinaryFile(jar.toFile) with VirtualJarFile)
 
+  private final val globalCache = new IRFileCache()
   def link(
       config: JsConfig,
       project: Project,
@@ -58,10 +60,19 @@ object JsBridge {
       logger: BloopLogger
   ): Unit = {
     val classpath = project.classpath.map(_.underlying)
-    val classpathIrFiles = classpath
-      .filter(Files.isDirectory(_))
-      .flatMap(findIrFiles)
-      .map(f => new FileVirtualScalaJSIRFile(f.toFile))
+    val classpathIrFiles = {
+      for {
+        dir <- classpath.filter(Files.isDirectory(_))
+        ir <- findIrFiles(dir)
+      } yield {
+        IRContainer.File(
+          FileVirtualScalaJSIRFile.relative(
+            ir.toFile,
+            ir.toAbsolutePath.toString.stripPrefix(dir.toAbsolutePath.toString)
+          )
+        )
+      }
+    }
 
     val semantics = config.mode match {
       case LinkerMode.Debug => Semantics.Defaults
@@ -73,9 +84,10 @@ object JsBridge {
       case ModuleKindJS.CommonJSModule => ModuleKind.CommonJSModule
     }
 
+    val cache = globalCache.newCache
     val enableOptimizer = config.mode == LinkerMode.Release
-    val jarFiles = classpath.filter(isJarFile).map(toIrJar)
-    val scalajsIRFiles = jarFiles.flatMap(_.jar.sjsirFiles)
+    val irJarFiles = classpath.filter(isJarFile).map(toIrJar)
+    val irFiles = cache.cached(classpathIrFiles ++ irJarFiles)
     val initializers =
       mainClass.map(cls => ModuleInitializer.mainMethodWithArgs(cls, "main")).toList
     val jsConfig = StandardLinker
@@ -87,7 +99,7 @@ object JsBridge {
       .withSourceMap(config.emitSourceMaps)
 
     StandardLinker(jsConfig).link(
-      irFiles = classpathIrFiles ++ scalajsIRFiles,
+      irFiles = irFiles,
       moduleInitializers = initializers,
       output = AtomicWritableFileVirtualJSFile(target.toFile),
       logger = new Logger(logger)

@@ -40,6 +40,11 @@ object JsBridge {
     override def trace(t: => Throwable): Unit = logger.trace(t)
   }
 
+  private final val globalCache = {
+    println("initializing this shit")
+    new IRFileCache()
+  }
+  val cache = globalCache.newCache
   def link(
       config: JsConfig,
       project: Project,
@@ -58,7 +63,6 @@ object JsBridge {
       case ModuleKindJS.CommonJSModule => ModuleKind.CommonJSModule
     }
 
-    val cache = new IRFileCache().newCache
     val irClasspath = FileScalaJSIRContainer.fromClasspath(project.classpath.map(_.toFile))
     val irFiles = cache.cached(irClasspath)
 

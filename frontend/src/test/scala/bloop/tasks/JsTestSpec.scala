@@ -207,7 +207,7 @@ class JsTestSpec(
       }
 
       try {
-        TestUtil.blockOnTask(discoveredTask, 10)
+        TestUtil.blockOnTask(discoveredTask.flatMap(_ => discoveredTask), 10)
       } finally {
         testLoader.close()
       }
