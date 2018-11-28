@@ -1,3 +1,21 @@
+.token.keyword {
+  color: #1990b8;
+}
+
+.token.string,
+.token.regex {
+  color: #2f9c0a;
+}
+
+.token.boolean,
+.token.number {
+  color: #c92c2c;
+}
+
+.token.comment {
+  color: #7d8b99;
+}
+
 .hero {
   background: $primaryColor;
   color: #f9f9f9;
@@ -127,8 +145,9 @@
 }
 
 blockquote {
-  background-color: rgb(30, 194, 239, 0.1);
-  border-left: 8px solid rgb(30, 194, 239);
+    background: #fafbfc;
+    border-left-color: #e0e0e0;
+    color: inherit;
 }
 
 @media only screen and (min-width: 736px) {
@@ -172,6 +191,11 @@ blockquote {
   .featureSection {
     list-style: none !important;
     list-style-position: inside;
+  }
+
+  .installationContainer {
+    margin: 0px auto;
+    max-width: 60%;
   }
 }
 

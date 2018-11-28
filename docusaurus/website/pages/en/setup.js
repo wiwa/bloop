@@ -13,11 +13,11 @@ const SetupHeader = () => {
   return (
     <div className="page-header text-center">
       <h1>
-        <translate desc="setup page - header">Using Babel</translate>
+        <translate desc="setup page - header">Installing Bloop</translate>
       </h1>
       <p>
         <translate desc="setup page - header desc">
-          How to use Babel with your tool of choice.
+          How to set up Bloop with your tool of choice.
         </translate>
       </p>
     </div>
@@ -55,7 +55,7 @@ const SetupOptions = () => {
       <h2>
         <span className="step-no">1</span>
         <translate desc="setup page - step 1">
-          Choose your tool (try CLI)
+          Pick your preferred method
         </translate>
       </h2>
       {showCase}
@@ -89,10 +89,16 @@ const StepFour = () => {
     <div className="step-hidden step-setup">
       <h2>
         <span className="step-no">4</span>
-        <translate desc="setup page - step 4 one">Create</translate>{" "}
-        <code>.babelrc</code>{" "}
-        <translate desc="setup page - step 4 two">configuration file</translate>
+        <translate desc="setup page - step 4 one">Generate bloop configuration files</translate>
       </h2>
+      <MarkdownBlock>
+        Great! Bloop has already been installed and the build server is running in the background.
+      </MarkdownBlock>
+      <MarkdownBlock>
+        To start compiling, testing and running your projects, you need to generate Bloop JSON
+        configuration files from your build. Head to the [Generating configuration files]()
+        section to learn how to set up your build to export your project.
+      </MarkdownBlock>
     </div>
   );
 };
@@ -118,9 +124,11 @@ class Setup extends React.Component {
     const time = new Date().getTime();
     return (
       <div className="mainContainer">
-        <SetupHeader />
-        <SetupContent />
-        <script src={`${siteConfig.baseUrl}scripts/tools.js?t=${time}`} />
+        <div className="installationContainer">
+          <SetupHeader />
+          <SetupContent />
+          <script src={`${siteConfig.baseUrl}scripts/tools.js?t=${time}`} />
+        </div>
       </div>
     );
   }

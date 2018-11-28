@@ -36,6 +36,24 @@ class NailgunSpec extends NailgunTestUtils {
   }
 
   @Test
+  def testAboutCommandInProjectWithNoConfigurationFiles(): Unit = {
+    val tmpDir = Files.createTempDirectory("bloop-nailgun-empty")
+    tmpDir.toFile.deleteOnExit()
+    withServer(tmpDir, false, new RecordingLogger()) { (logger, client) =>
+      client.success("about")
+      val messages = logger.getMessages()
+      def contains(needle: String): Unit = {
+        assertTrue(s"'$needle' not found in $messages", messages.exists(_._2.contains(needle)))
+      }
+      contains("Bloop version")
+      contains("Zinc version")
+      contains("Scala version")
+      contains("maintained by")
+      contains("Scala Center")
+    }
+  }
+
+  @Test
   def testAboutCommand(): Unit = {
     withServerInProject("with-resources") { (logger, client) =>
       client.success("about")

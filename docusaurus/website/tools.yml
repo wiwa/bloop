@@ -1,3 +1,7 @@
-- name: Built-ins
+- name: Universal installation
   items:
-    bloop_cli: CLI
+    universal: Script
+- name: Package managers
+  items:
+    homebrew: Homebrew
+    nix: Nix
