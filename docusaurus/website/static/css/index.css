@@ -230,11 +230,6 @@ blockquote {
     list-style-position: inside;
   }
 
-  .installationContainer {
-    margin: 0px auto;
-    max-width: 60%;
-  }
-
   .diagram {
     margin: 0px auto;
     width: 60%;
