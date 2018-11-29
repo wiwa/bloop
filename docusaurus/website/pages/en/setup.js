@@ -95,9 +95,8 @@ const StepFour = () => {
         Great! Bloop has already been installed and the build server is running in the background.
       </MarkdownBlock>
       <MarkdownBlock>
-        To start compiling, testing and running your projects, you need to generate Bloop JSON
-        configuration files from your build. Head to the [Generating configuration files]()
-        section to learn how to set up your build to export your project.
+        [Learn the Basics](docs/basics) and then start compiling, testing and running your projects by
+        following the [Usage Guide](docs/usage).
       </MarkdownBlock>
     </div>
   );

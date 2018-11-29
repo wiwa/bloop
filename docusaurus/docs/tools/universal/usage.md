@@ -95,3 +95,54 @@ $ mkdir -p $HOME/.config/autostart
 $ ln -s $HOME/.bloop/xdg/bloop.desktop $HOME/.config/autostart/
 ```
 
+### Command-Line Completions
+
+Bloop supports command-line completions in bash, zsh and fish. The installation process requires you
+to install the completions manually. Follow the following instructions to get set up.
+
+> Note that the following instructions assume that the bloop installation directory is the default
+`$HOME/.bloop`.
+
+#### Zsh Completions
+
+Add the following to your `~/.zshrc`:
+
+```sh
+autoload -U compinit
+fpath=($HOME/.bloop/zsh $fpath)
+compinit
+```
+
+#### Bash Completions
+
+Add the following to your `~/.bash_profile`:
+
+```sh
+. $HOME/.bloop/bash/bloop
+```
+
+#### Fish Completions
+
+Symlink the fish completions file in the Bloop installation directory to your local fish completions
+directory (usually `~/.config/fish/completions`).
+
+```sh
+$ ln -s $HOME/.bloop/fish/bloop.fish ~/.config/fish/completions/bloop.fish
+```
+
+> Make sure that the target fish completions directory already exists.
+
+Bloop CLI completions will not work if the build server is not running when the shell is reloaded.
+Make sure that, before reloading the fish shell, the build server is started.
+
+If you still experience problems, reload the completion script:
+
+```bash
+$ source $HOME/.bloop/fish/bloop.fish bloop.fish
+```
+
+Or, if you use [Oh My Fish](https://github.com/oh-my-fish/oh-my-fish):
+
+```bash
+$ omf reload
+```

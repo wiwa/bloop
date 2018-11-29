@@ -87,3 +87,6 @@ $ mkdir -p $HOME/.config/autostart
 $ ln -s $HOME/.bloop/xdg/bloop.desktop $HOME/.config/autostart/
 ```
 
+### Command-line completions
+
+The installation script will automatically install completions for bash, zsh and fish.

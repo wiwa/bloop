@@ -12,7 +12,7 @@ Bloop is a Scala build server developed by [the Scala Center][scalacenter]. It h
 
 ## Features
 
-1. Compiles a vast array of Java and Scala (2.10.x, 2.11.x, 2.12.x, 2.13.x and 3.x) versions
+1. Compiles a vast array of Java and Scala (2.10.x, 2.11.x, 2.12.x and 3.x) versions
 1. Runs and tests on the Java, [Scala.js](https://www.scala-js.org/) and [Scala Native](https://github.com/scala-native/scala-native) runtimes
 1. Integrates with common build tools in the Scala ecosystem (sbt, Gradle, etc)
 
