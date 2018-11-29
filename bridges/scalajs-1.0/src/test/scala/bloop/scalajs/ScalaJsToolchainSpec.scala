@@ -18,7 +18,8 @@ import org.junit.experimental.categories.Category
 class ScalaJsToolchainSpec {
   val MainProject = "test-projectJS"
   val TestProject = "test-projectJS-test"
-  val state0: State = {
+  val CommonJsProject = "commonjs-project"
+  val crossTestState: State = {
     def setUpScalajs(p: Project): Project = {
       val platform = p.platform match {
         case jsPlatform: Platform.Js =>
@@ -33,8 +34,18 @@ class ScalaJsToolchainSpec {
 
   @Test def canLinkScalaJsProject(): Unit = {
     val logger = new RecordingLogger
-    val state = state0.copy(logger = logger)
+    val state = crossTestState.copy(logger = logger)
     val action = Run(Commands.Link(project = MainProject))
+    val resultingState = TestUtil.blockingExecute(action, state, maxDuration)
+
+    assertTrue(s"Linking failed: ${logger.getMessages.mkString("\n")}", resultingState.status.isOk)
+    logger.getMessages.assertContain("Generated JavaScript file '", atLevel = "info")
+  }
+
+  @Test def canLinkCommonJsScalaJsProject(): Unit = {
+    val logger = new RecordingLogger
+    val state = crossTestState.copy(logger = logger)
+    val action = Run(Commands.Link(project = CommonJsProject))
     val resultingState = TestUtil.blockingExecute(action, state, maxDuration)
 
     assertTrue(s"Linking failed: ${logger.getMessages.mkString("\n")}", resultingState.status.isOk)
@@ -44,7 +55,7 @@ class ScalaJsToolchainSpec {
   @Test def canLinkScalaJsProjectInReleaseMode(): Unit = {
     val logger = new RecordingLogger
     val mode = OptimizerConfig.Release
-    val state = state0.copy(logger = logger)
+    val state = crossTestState.copy(logger = logger)
     val action = Run(Commands.Link(project = MainProject, optimize = Some(mode)))
     val resultingState = TestUtil.blockingExecute(action, state, maxDuration * 2)
 
@@ -55,7 +66,7 @@ class ScalaJsToolchainSpec {
   @Test def canRunScalaJsProject(): Unit = {
     val logger = new RecordingLogger
     val mode = OptimizerConfig.Release
-    val state = state0.copy(logger = logger)
+    val state = crossTestState.copy(logger = logger)
     val action = Run(Commands.Run(project = MainProject))
     val resultingState = TestUtil.blockingExecute(action, state, maxDuration)
 

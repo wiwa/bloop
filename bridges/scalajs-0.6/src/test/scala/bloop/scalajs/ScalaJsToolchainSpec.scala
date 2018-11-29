@@ -19,7 +19,7 @@ import org.junit.experimental.categories.Category
 class ScalaJsToolchainSpec {
   val MainProject = "test-projectJS"
   val TestProject = "test-projectJS-test"
-  val CommonJsProject = "commonjs-build-0-6"
+  val CommonJsProject = "commonjs-project"
 
   def setUpScalajs(p: Project): Project = {
     val platform = p.platform match {
@@ -31,24 +31,7 @@ class ScalaJsToolchainSpec {
     p.copy(platform = platform)
   }
 
-  val crossTestState: State =
-    TestUtil.loadTestProject("cross-test-build-0.6", _.map(setUpScalajs))
-  val commonjsTestState: State = {
-    val initial = TestUtil.loadTestProject("commonjs-build-0.6", _.map(setUpScalajs))
-
-    // Enable CommonJS mode, workaround for https://github.com/scalacenter/bloop/issues/715
-    commonjsTestState.copy(
-      build = commonjsTestState.build.copy(
-        projects = commonjsTestState.build.projects.map { p =>
-          p.copy(platform = p.platform match {
-            case p: Platform.Js =>
-              p.copy(config = p.config.copy(kind = Config.ModuleKindJS.CommonJSModule))
-            case p => p
-          })
-        }
-      )
-    )
-  }
+  val crossTestState: State = TestUtil.loadTestProject("cross-test-build-0.6", _.map(setUpScalajs))
 
   @Test def canLinkScalaJsProject(): Unit = {
     val logger = new RecordingLogger
@@ -62,7 +45,7 @@ class ScalaJsToolchainSpec {
 
   @Test def canLinkCommonJsScalaJsProject(): Unit = {
     val logger = new RecordingLogger
-    val state = commonjsTestState.copy(logger = logger)
+    val state = crossTestState.copy(logger = logger)
     val action = Run(Commands.Link(project = CommonJsProject))
     val resultingState = TestUtil.blockingExecute(action, state, maxDuration)
 

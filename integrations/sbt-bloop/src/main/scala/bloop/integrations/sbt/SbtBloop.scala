@@ -6,7 +6,25 @@ import java.nio.file.{Files, Path}
 import bloop.config.Config
 import bloop.config.util.ConfigUtil
 import bloop.integration.sbt.Feedback
-import sbt.{AutoPlugin, ClasspathDep, ClasspathDependency, Compile, ConfigKey, Configuration, Def, File, Global, Keys, LocalRootProject, Logger, ProjectRef, ResolvedProject, Test, ThisBuild, ThisProject}
+import sbt.{
+  AutoPlugin,
+  ClasspathDep,
+  ClasspathDependency,
+  Compile,
+  ConfigKey,
+  Configuration,
+  Def,
+  File,
+  Global,
+  Keys,
+  LocalRootProject,
+  Logger,
+  ProjectRef,
+  ResolvedProject,
+  Test,
+  ThisBuild,
+  ThisProject
+}
 import xsbti.compile.CompileOrder
 
 object BloopPlugin extends AutoPlugin {
@@ -208,15 +226,37 @@ object BloopDefaults {
 
   lazy val findOutScalaJsModuleKind: Def.Initialize[Option[String]] = Def.settingDyn {
     try {
-      val stageClass = Class.forName("core.tools.linker.backend.ModuleKind")
-      val stageSetting = proxyForSetting("scalaJSModuleKind", stageClass)
-      Def.setting {
-        stageSetting.value.toString match {
-          case "Some(NoModule)" => Some(NoJSModule)
-          case "Some(CommonJSModule)" => Some(CommonJSModule)
-          case _ => None
+      // Fix for https://github.com/scalacenter/bloop/issues/715
+      try {
+        val clazz = Class.forName("org.scalajs.core.tools.linker.backend.ModuleKind")
+        val stageSetting = proxyForSetting("scalaJSModuleKind", clazz)
+
+        Def.setting {
+          stageSetting.value.toString match {
+            case "Some(NoModule)" => Some(NoJSModule)
+            case "Some(CommonJSModule)" => Some(CommonJSModule)
+            case _ => None
+          }
         }
+      } catch {
+        case c: ClassNotFoundException =>
+          // It means it's Scala.js > 0.6.x, let's try with the 1.x variant
+          val clazz1 = Class.forName("org.scalajs.linker.StandardLinker$Config")
+          val stageManifest = new Manifest[AnyRef] { override def runtimeClass = clazz1 }
+
+          val clazz2 = classOf[sbt.Attributed[File]]
+          val taskManifest = new Manifest[AnyRef] { override def runtimeClass = clazz2 }
+          val linkTask = toAnyRefTaskKey("fastOptJS", taskManifest)
+
+          val stageSetting = toAnyRefSettingKey("scalaJSLinkerConfig", stageManifest).in(linkTask).?
+
+          // TODO(jvican): Generalize all of this to extract more linker information
+          Def.setting {
+            if (!stageSetting.value.toString.contains("CommonJSModule")) None
+            else Some(CommonJSModule)
+          }
       }
+
     } catch {
       case _: ClassNotFoundException => Def.setting(None)
     }

@@ -33,3 +33,11 @@ lazy val `test-project` =
 
 lazy val `test-project-js` = `test-project`.js
 lazy val `test-project-jvm` = `test-project`.jvm
+
+lazy val `commonjs-project` = project
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    scalaVersion := "2.12.6",
+    scalacOptions += "-Ywarn-unused",
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) }
+  )
