@@ -2,11 +2,27 @@ body {
   background-color: #f5fcff;
 }
 
+table thead {
+  background-color: rgb(237, 252, 255);
+}
+
+table tr:nth-child(2n) {
+  background-color: rgb(237, 252, 255);
+}
+
 .mainContainer a {
   color: $secondaryColor;
 }
 
-.installationContainer a {
+.tools-group a {
+  color: $primaryColor;
+}
+
+.postHeader a {
+  color: $primaryColor;
+}
+
+.docs-prevnext a {
   color: $primaryColor;
 }
 

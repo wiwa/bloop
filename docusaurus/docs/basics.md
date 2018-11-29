@@ -7,7 +7,7 @@ sidebar_label: Learn the Basics
 Bloop is a Scala build server developed by [the Scala Center][scalacenter]. It has three main goals:
 
 1. Compiles, tests and runs Scala code as fast as possible
-1. Is an independent long-running process that can be reused by multiple clients
+1. Is an independent and long-lived process reusable by multiple clients
 1. Integrates easily with build tools, command-line applications, editors and custom tooling
 
 ## Features
@@ -72,7 +72,7 @@ short-lived compiler).
 
 A client-server architecture enables different clients to share optimized compilers and build
 instances, minimizing developer latency and deduplicating the work to warm up hot compilers in every
-client.
+client session.
 
 ### Optimize for the Most Common Scenarios
 

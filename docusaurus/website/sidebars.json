@@ -1,7 +1,9 @@
 {
   "docs": {
-    "The Basics": [
-      "basics"
+    "General": [
+      "basics",
+      "usage",
+      "integration"
     ],
     "Build Tools": [
       "sbt",
@@ -10,8 +12,5 @@
       "mill"
     ],
     "Contributing": ["project-goals"]
-  },
-  "docs-other": {
-    "First Category": ["doc4", "doc5"]
   }
 }
