@@ -1,7 +1,7 @@
 ---
-id: doc1
-title: Latin-ish
-sidebar_label: Example Page
+id: mill
+title: Export mill build to bloop
+sidebar_label: Mill
 ---
 
 Check the [documentation](https://docusaurus.io) for how to use Docusaurus.

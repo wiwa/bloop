@@ -192,7 +192,7 @@ const FeatureCallout = () => (
 );
 
 const LearnHow = () => (
-  <Block background="light">
+  <Block>
     {[
       {
         content: 'Talk about learning how to use this',

@@ -1,3 +1,23 @@
+body {
+  background-color: #f5fcff;
+}
+
+a {
+  color: $secondaryColor;
+}
+
+.lightBackground {
+  background-color: #e7f8ff;
+}
+
+.docsNavContainer .toc .navBreadcrumb {
+  background-color: #e7f8ff;
+}
+
+.mainContainer h1, .mainContainer h2, .mainContainer h3, .mainContainer h4, .mainContainer h5, .mainContainer h6 {
+    color: #005068 !important;
+}
+
 .token.keyword {
   color: #1990b8;
 }
@@ -77,11 +97,8 @@
 }
 
 .tldrSection a:not(.hash-link) {
+  color: $primaryColor;
   border-bottom: 1px solid $primaryColor;
-}
-
-.mainContainer a:not(.hash-link) {
-  text-decoration: underline;
 }
 
 .pluginRowBlock .buttonWrapper:first-of-type .button {
@@ -145,7 +162,7 @@
 }
 
 blockquote {
-    background: #fafbfc;
+    background: #fff;
     border-left-color: #e0e0e0;
     color: inherit;
 }
@@ -196,6 +213,13 @@ blockquote {
   .installationContainer {
     margin: 0px auto;
     max-width: 60%;
+  }
+
+  .diagram {
+    margin: 0px auto;
+    width: 60%;
+    margin-top: 3em;
+    margin-bottom: 3em;
   }
 }
 
@@ -374,3 +398,4 @@ blockquote {
   max-height: 95px;
   max-width: 90px;
 }
+
