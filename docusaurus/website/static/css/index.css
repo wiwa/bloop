@@ -2,8 +2,12 @@ body {
   background-color: #f5fcff;
 }
 
-a {
+.mainContainer a {
   color: $secondaryColor;
+}
+
+.installationContainer a {
+  color: $primaryColor;
 }
 
 .lightBackground {
