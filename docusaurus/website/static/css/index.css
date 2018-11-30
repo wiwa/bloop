@@ -2,6 +2,10 @@ body {
   background-color: #f5fcff;
 }
 
+.blockImage {
+  max-width: 400px !important;
+}
+
 table thead {
   background-color: rgb(237, 252, 255);
 }

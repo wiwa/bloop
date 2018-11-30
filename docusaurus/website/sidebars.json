@@ -3,8 +3,8 @@
     "General": [
       "basics",
       "usage",
-      "integration",
-      "cli-reference"
+      "cli-reference",
+      "integration"
     ],
     "Build Tools": [
       "sbt",

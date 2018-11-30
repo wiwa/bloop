@@ -1,29 +1,69 @@
 ---
 id: mill
-title: Export mill build to bloop
+title: Export mill builds to bloop
 sidebar_label: Mill
 ---
 
-Check the [documentation](https://docusaurus.io) for how to use Docusaurus.
+## Install the Plugin
 
-## Lorem
+Install bloop in `build.sc`:
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque elementum dignissim ultricies. Fusce rhoncus ipsum tempor eros aliquam consequat. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus elementum massa eget nulla aliquet sagittis. Proin odio tortor, vulputate ut odio in, ultrices ultricies augue. Cras ornare ultrices lorem malesuada iaculis. Etiam sit amet libero tempor, pulvinar mauris sed, sollicitudin sapien.
-
-## Mauris In Code
-
-```
-Mauris vestibulum ullamcorper nibh, ut semper purus pulvinar ut. Donec volutpat orci sit amet mauris malesuada, non pulvinar augue aliquam. Vestibulum ultricies at urna ut suscipit. Morbi iaculis, erat at imperdiet semper, ipsum nulla sodales erat, eget tincidunt justo dui quis justo. Pellentesque dictum bibendum diam at aliquet. Sed pulvinar, dolor quis finibus ornare, eros odio facilisis erat, eu rhoncus nunc dui sed ex. Nunc gravida dui massa, sed ornare arcu tincidunt sit amet. Maecenas efficitur sapien neque, a laoreet libero feugiat ut.
+```scala
+import $ivy.`ch.epfl.scala::mill-bloop:1.1.0`
 ```
 
-## Nulla
+## Export the Build
 
-Nulla facilisi. Maecenas sodales nec purus eget posuere. Sed sapien quam, pretium a risus in, porttitor dapibus erat. Sed sit amet fringilla ipsum, eget iaculis augue. Integer sollicitudin tortor quis ultricies aliquam. Suspendisse fringilla nunc in tellus cursus, at placerat tellus scelerisque. Sed tempus elit a sollicitudin rhoncus. Nulla facilisi. Morbi nec dolor dolor. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras et aliquet lectus. Pellentesque sit amet eros nisi. Quisque ac sapien in sapien congue accumsan. Nullam in posuere ante. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Proin lacinia leo a nibh fringilla pharetra.
+The mill command `bloopInstall` exports your mill build to bloop.
 
-## Orci
+The mill plugin generates a configuration file per every compile and test sources in your build
+definition. For example, a build with a single Scala project `foo` generates two configuration files
+by default:
 
-Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Proin venenatis lectus dui, vel ultrices ante bibendum hendrerit. Aenean egestas feugiat dui id hendrerit. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur in tellus laoreet, eleifend nunc id, viverra leo. Proin vulputate non dolor vel vulputate. Curabitur pretium lobortis felis, sit amet finibus lorem suscipit ut. Sed non mollis risus. Duis sagittis, mi in euismod tincidunt, nunc mauris vestibulum urna, at euismod est elit quis erat. Phasellus accumsan vitae neque eu placerat. In elementum arcu nec tellus imperdiet, eget maximus nulla sodales. Curabitur eu sapien eget nisl sodales fermentum.
+```bash
+$ mill bloop.integrations.mill.Bloop/install
+(...)
+info Generated '/disk/foo/.bloop/foo.json'.
+info Generated '/disk/foo/.bloop/foo-test.json'.
+```
 
-## Phasellus
+where:
+1. `foo` comes from the compile source set; and,
+1. `foo-test` comes from the test source set and depends on `foo`
 
-Phasellus pulvinar ex id commodo imperdiet. Praesent odio nibh, sollicitudin sit amet faucibus id, placerat at metus. Donec vitae eros vitae tortor hendrerit finibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Quisque vitae purus dolor. Duis suscipit ac nulla et finibus. Phasellus ac sem sed dui dictum gravida. Phasellus eleifend vestibulum facilisis. Integer pharetra nec enim vitae mattis. Duis auctor, lectus quis condimentum bibendum, nunc dolor aliquam massa, id bibendum orci velit quis magna. Ut volutpat nulla nunc, sed interdum magna condimentum non. Sed urna metus, scelerisque vitae consectetur a, feugiat quis magna. Donec dignissim ornare nisl, eget tempor risus malesuada quis.
+## Verify Installation and Export
+
+> Remember that the build server must be running in the background, as suggested by the [Setup
+page](/setup).
+
+Verify your installation by running `bloop projects` in the root of the mill workspace directory.
+
+```bash
+$ bloop projects
+foo
+foo-test
+```
+
+If the results of `bloop projects` is empty, check that:
+
+1. You are running the command-line invocation in the root base directory (e.g. `/disk/foo`).
+1. The gradle build export process completed successfully.
+1. The `.bloop/` configuration directory contains bloop configuration files.
+
+If you suspect bloop is loading the configuration files from somewhere else, run `--verbose`:
+
+```bash
+$ bloop projects --verbose
+[D] Projects loaded from '/my-project/.bloop':
+foo
+foo-test
+```
+
+Here's a list of bloop commands you can run next to start playing with bloop:
+
+1. `bloop compile --help`: shows the help section for compile.
+1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
+1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
+
+After verifying the export, you can continue using Bloop's command-line application or any build
+client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).

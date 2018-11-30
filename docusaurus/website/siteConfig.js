@@ -68,8 +68,6 @@ const siteConfig = {
   headerLinks: [
     {page: 'setup', label: 'Setup'},
     {doc: 'basics', label: 'Docs'},
-    {page: 'help', label: 'Community'},
-    {blog: true, label: 'Blog'},
     {search: true},
     {href: repoUrl, label: 'GitHub'},
   ],
@@ -125,7 +123,7 @@ const siteConfig = {
     theme: 'solarized-dark',
   },
 
-  usePrism: ['javascript', 'js', 'jsx', 'java', 'objective-c', 'json', 'scala', 'diff', 'bash'],
+  usePrism: ['javascript', 'js', 'jsx', 'java', 'objective-c', 'json', 'scala', 'diff', 'bash', 'groovy'],
 
   // Add custom scripts here that would be placed in <script> tags.
   scripts: [

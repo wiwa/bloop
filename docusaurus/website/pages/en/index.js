@@ -164,19 +164,19 @@ TldrSection.propTypes = {
 
 
 const Features = () => (
-  <Block layout="fourColumn">
+  <Block layout="twoColumn">
     {[
       {
-        //image: imgUrl('docusaurus.svg'),
-        //imageAlign: 'top',
-        title: 'Features',
-        content: 'This is the content of my feature',
+        image: imgUrl('build-tools-logos.svg'),
+        imageAlign: 'top',
+        title: 'Use it with Your Favorite Build Tool',
+        content: 'Bloop supports the most popular JVM build tools in the Java and Scala community, with more integrations on their way!',
       },
       {
-        content: 'The content of my second feature',
-        image: imgUrl('docusaurus.svg'),
+        content: 'Bloop has a flexible architecture encouraging first-class integrations with any client supporting Scala compilation, testing and run.',
+        image: imgUrl('bloop-architecture-diagram.svg'),
         imageAlign: 'top',
-        title: 'Feature Two',
+        title: 'Write your Tool and Integrate with Bloop',
       },
     ]}
   </Block>
@@ -186,8 +186,10 @@ const FeatureCallout = () => (
   <div
     className="productShowcaseSection paddingBottom"
     style={{textAlign: 'center'}}>
-    <h2>Feature Callout</h2>
-    <MarkdownBlock>These are features of this project</MarkdownBlock>
+    <h2>An Initiative Of</h2>
+    <img
+      src="/img/scala-center-logo.png"
+      style={{maxWidth: '600px', padding: '30px'}}></img>
   </div>
 );
 
@@ -266,10 +268,6 @@ class Index extends React.Component {
         <div className="mainContainer">
           <Features />
           <FeatureCallout />
-          <LearnHow />
-          <TryOut />
-          <Description />
-          <Showcase language={language} />
         </div>
       </div>
     );

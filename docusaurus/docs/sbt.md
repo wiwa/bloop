@@ -46,6 +46,9 @@ the `.bloop` directory.
 
 ## Verify Installation and Export
 
+> Remember that the build server must be running in the background, as suggested by the [Setup
+page](/setup).
+
 Verify your installation by running `bloop projects` in the root of the sbt workspace directory.
 
 ```bash
@@ -74,6 +77,9 @@ Here's a list of bloop commands you can run next to start playing with bloop:
 1. `bloop compile --help`: shows the help section for compile.
 1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
 1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
+
+After verifying the export, you can continue using Bloop's command-line application or any build
+client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
 
 ## Advanced Configuration
 
