@@ -1,7 +1,7 @@
 {
   "docs": {
     "General": [
-      "basics",
+      "what-is-bloop",
       "usage",
       "cli-reference",
       "integration"

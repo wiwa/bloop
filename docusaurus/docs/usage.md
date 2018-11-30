@@ -4,7 +4,7 @@ title: Usage Guide
 sidebar_label: Usage Guide
 ---
 
-> **Pre-requirement**: [install bloop](/setup) and [learn the Basics](basics.md) before reading the
+> **Pre-requirement**: [install bloop](/setup) and [learn the Basics](what-is-bloop.md) before reading the
 > usage guide.
 
 To use bloop you first need to generate Bloop configuration files from your build tool. These

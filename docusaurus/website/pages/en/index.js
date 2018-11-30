@@ -138,7 +138,7 @@ const TldrSection = ({ language }) => (
           <h2>Features</h2>
           <ul className="featureSection" style={{ flex: "1" }}>
             <li>Provides <b>fast</b> compile, test and run</li>
-            <li>Sports a command-line tool</li>
+            <li>Has a built-in command-line tool</li>
             <li>Integrates with most JVM build tools</li>
             <li>Implements the <b><a href="https://github.com/scalacenter/bsp">Build Server Protocol</a></b></li>
             <li>Supports JVM, Scala.js and Scala Native</li>

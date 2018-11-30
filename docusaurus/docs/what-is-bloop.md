@@ -1,7 +1,7 @@
 ---
-id: basics
-title: Learn the Basics
-sidebar_label: Learn the Basics
+id: what-is-bloop
+title: What is bloop
+sidebar_label: What is bloop
 ---
 
 Bloop is a Scala build server developed by [the Scala Center][scalacenter]. It has three main goals:
@@ -38,7 +38,7 @@ Clients can connect to the build server in two ways:
   Interested in integrating with Bloop? Read the integration guide.
 </blockquote>
 
-## The principles
+## The Principles
 
 The lack of clear design principles in previous Scala tools has hindered progress in the tooling
 community, complicated maintenance and worsened the Scala user experience with, for example, slower
@@ -62,7 +62,7 @@ the best developer experience to Scala users, simplifies future Scala integratio
 maintainers focus on one single implementation to track performance, reliability and success
 metrics.
 
-### Outlive build clients, Ease Integration
+### Outlive Build Clients, Ease Integration
 
 There are all kinds of build clients: short-lived and long-lived, JVM-based and native, local and
 remote. Yet, regardless of the nature of the clients, the Scala toolchain runs on the JVM and needs

@@ -44,87 +44,7 @@ dependency, a resource or changing the project name) requires the user to run `b
 project is removed in the build, `bloopInstall` will automatically remove its old configuration from
 the `.bloop` directory.
 
-## Verify Installation and Export
-
-> Remember that the build server must be running in the background, as suggested by the [Setup
-page](/setup).
-
-Verify your installation by running `bloop projects` in the root of the sbt workspace directory.
-
-```bash
-$ bloop projects
-foo
-foo-test
-```
-
-If the results of `bloop projects` is empty, check that:
-
-1. You are running the command-line invocation in the root base directory (e.g. `/disk/foo`).
-1. The sbt build export process completed successfully.
-1. The `.bloop/` configuration directory contains bloop configuration files.
-
-If you suspect bloop is loading the configuration files from somewhere else, use `--verbose`:
-
-```bash
-$ bloop projects --verbose
-[D] Projects loaded from '/my-project/.bloop':
-foo
-foo-test
-```
-
-Here's a list of bloop commands you can run next to start playing with bloop:
-
-1. `bloop compile --help`: shows the help section for compile.
-1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
-1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
-
-After verifying the export, you can continue using Bloop's command-line application or any build
-client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
-
-## Advanced Configuration
-
-### Speeding Up Build Export
-
-`bloopInstall` typically completes in 15 seconds for a medium-sized projects once all dependencies
-have already been downloaded. However, it can happen that running `bloopInstall` in your project is
-slower than that. This long duration can usually be removed by making some changes in the build.
-
-If you want to speed up this process, here's a list of things you can do.
-
-Ensure that no compilation is triggered during `bloopInstall`. `bloopInstall` is intentionally
-configured to skip project compilations to make the export process fast. If compilations are
-triggered, then it means your build adds certain runtime dependencies in your build graph.
-
-> For example, your build may be forcing the `publishLocal` of a project `a` whenever the classpath of
-`b` is computed. Identify this kind of dependencies and prune them.
-
-Another rule of thumb is to make sure that source and resource generators added to your build by
-either you or sbt plugin are incremental and complete as soon as possible.
-
-Lastly, make sure you keep a hot sbt session around as much time as possible. Running `bloopInstall`
-a second time in the sbt session is *really* fast.
-
-### Export Main Class from sbt
-
-If you want bloop to export `mainClass` from your build definition, define either of the following
-settings in your `build.sbt`:
-
-```scala
-bloopMainClass in (Compile, run) := Some("foo.App")
-```
-
-The build plugin doesn't intentionally populate the main class directly from sbt's `mainClass`
-because the execution of such a task may trigger compilation of projects in the build.
-
-### Support for source dependencies
-
-Source dependencies are not well supported in sbt. Nonetheless, if you use them in your build and
-you want to generate bloop configuration files for them too, add the following to your `build.sbt`:
-
-```scala
-// Note that this task has to be scoped globally
-bloopAggregateSourceDependencies in Global := true
-```
+## Configure Build Export
 
 ### Export Projects For Additional Configurations
 
@@ -163,6 +83,87 @@ sbt> bloopInstall
 If you want to avoid using Bloop-specific settings in your build definition, add the previous
 `inConfig` line in another file (e.g. a `local.sbt` file) and add this local file to your global
 `.gitignore`.
+
+### Enable Generation for Source Dependencies
+
+Source dependencies are not well supported in sbt. Nonetheless, if you use them in your build and
+you want to generate bloop configuration files for them too, add the following to your `build.sbt`:
+
+```scala
+// Note that this task has to be scoped globally
+bloopAggregateSourceDependencies in Global := true
+```
+
+### Export Main Class from sbt
+
+If you want bloop to export `mainClass` from your build definition, define either of the following
+settings in your `build.sbt`:
+
+```scala
+bloopMainClass in (Compile, run) := Some("foo.App")
+```
+
+The build plugin doesn't intentionally populate the main class directly from sbt's `mainClass`
+because the execution of such a task may trigger compilation of projects in the build.
+
+
+## Verify Installation and Export
+
+> Remember that the build server must be running in the background, as suggested by the [Setup
+page](/setup).
+
+Verify your installation by running `bloop projects` in the root of the sbt workspace directory.
+
+```bash
+$ bloop projects
+foo
+foo-test
+```
+
+If the results of `bloop projects` is empty, check that:
+
+1. You are running the command-line invocation in the root base directory (e.g. `/disk/foo`).
+1. The sbt build export process completed successfully.
+1. The `.bloop/` configuration directory contains bloop configuration files.
+
+If you suspect bloop is loading the configuration files from somewhere else, use `--verbose`:
+
+```bash
+$ bloop projects --verbose
+[D] Projects loaded from '/my-project/.bloop':
+foo
+foo-test
+```
+
+Here's a list of bloop commands you can run next to start playing with bloop:
+
+1. `bloop compile --help`: shows the help section for compile.
+1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
+1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
+
+After verifying the export, you can continue using Bloop's command-line application or any build
+client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
+
+## Speeding Up Build Export
+
+`bloopInstall` typically completes in 15 seconds for a medium-sized projects once all dependencies
+have already been downloaded. However, it can happen that running `bloopInstall` in your project is
+slower than that. This long duration can usually be removed by making some changes in the build.
+
+If you want to speed up this process, here's a list of things you can do.
+
+Ensure that no compilation is triggered during `bloopInstall`. `bloopInstall` is intentionally
+configured to skip project compilations to make the export process fast. If compilations are
+triggered, then it means your build adds certain runtime dependencies in your build graph.
+
+> For example, your build may be forcing the `publishLocal` of a project `a` whenever the classpath of
+`b` is computed. Identify this kind of dependencies and prune them.
+
+Another rule of thumb is to make sure that source and resource generators added to your build by
+either you or sbt plugin are incremental and complete as soon as possible.
+
+Lastly, make sure you keep a hot sbt session around as much time as possible. Running `bloopInstall`
+a second time in the sbt session is *really* fast.
 
 [sbt-configuration]: https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 [integration-test-conf]: https://www.scala-sbt.org/1.0/docs/offline/Testing.html#Integration+Tests

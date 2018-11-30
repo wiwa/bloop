@@ -95,7 +95,7 @@ const StepFour = () => {
         Great! Bloop has already been installed and the build server is running in the background.
       </MarkdownBlock>
       <MarkdownBlock>
-        [Learn the Basics](docs/basics) and then start compiling, testing and running your projects by
+        [Learn the Basics](docs/what-is-bloop) and then start compiling, testing and running your projects by
         following the [Usage Guide](docs/usage).
       </MarkdownBlock>
     </div>
