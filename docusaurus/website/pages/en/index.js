@@ -167,15 +167,11 @@ const Features = () => (
   <Block layout="twoColumn">
     {[
       {
-        image: imgUrl('build-tools-logos.svg'),
-        imageAlign: 'top',
         title: 'Use it with Your Favorite Build Tool',
         content: 'Bloop supports the most popular JVM build tools in the Java and Scala community, with more integrations on their way!',
       },
       {
         content: 'Bloop has a flexible architecture encouraging first-class integrations with any client supporting Scala compilation, testing and run.',
-        image: imgUrl('bloop-architecture-diagram.svg'),
-        imageAlign: 'top',
         title: 'Write your Tool and Integrate with Bloop',
       },
     ]}
