@@ -1,8 +1,8 @@
-// Copied verbatim from https://github.com/babel/website
+// Modified to support nested tools group for build tools
 (function() {
   let currentItem;
   let currentNav;
-  const stepHidden = document.getElementsByClassName("step-hidden");
+  const stepHidden = document.getElementById("build-tools").getElementsByClassName("step-hidden");
 
   function hasClass(ele, cls) {
     return ele.className.match(new RegExp("(\\s|^)" + cls + "(\\s|$)"));
@@ -34,7 +34,7 @@
     }
   }
 
-  const buttons = document.querySelectorAll(".tools-group .tools-button");
+  const buttons = document.querySelectorAll(".build-tools-group .build-tools-button");
   for (let i = 0; i < buttons.length; i++) {
     const button = buttons[i];
     button.onclick = function() {
@@ -48,7 +48,7 @@
       const name = currentNav.attributes["data-title"].value;
       location.hash = name;
       currentItem = document.querySelectorAll(
-        "[data-title=" + name + "]:not(.tools-button)"
+        "[data-title=" + name + "]:not(.build-tools-button)"
       );
       for (let i = 0; i < currentItem.length; i++) {
         $(currentItem[i]).show();

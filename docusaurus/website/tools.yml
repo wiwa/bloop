@@ -1,6 +1,6 @@
 - name: Universal installation
   items:
-    universal: Script
+    universal: curl
 - name: Package managers
   items:
     homebrew: Homebrew

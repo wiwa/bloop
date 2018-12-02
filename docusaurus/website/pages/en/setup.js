@@ -5,9 +5,14 @@ const translate = require("../../server/translate.js").translate;
 const Container = CompLibrary.Container;
 const MarkdownBlock = CompLibrary.MarkdownBlock;
 
+const Prism = require("prismjs")
+const PrismJava = require("prismjs/components/prism-java");
+const PrismScala = require("prismjs/components/prism-scala");
+
 // Import paths to markdown files of the setup
 const siteConfig = require(process.cwd() + "/siteConfig.js");
 const toolsMD = siteConfig.toolsMD;
+const buildToolsMD = siteConfig.buildToolsMD;
 
 const SetupHeader = () => {
   return (
@@ -15,11 +20,6 @@ const SetupHeader = () => {
       <h1>
         <translate desc="setup page - header">Installing Bloop</translate>
       </h1>
-      <p>
-        <translate desc="setup page - header desc">
-          How to set up Bloop with your tool of choice.
-        </translate>
-      </p>
     </div>
   );
 };
@@ -27,18 +27,17 @@ const SetupHeader = () => {
 const SetupSelectButton = props => {
   const showTools = Object.keys(props.types.items).map((tool, j) => {
     return (
-      <a
+      <button
         key={j}
         data-title={tool}
-        href="#installation"
-        className="tools-button"
+        className={props.buttonClassName}
       >
         {props.types.items[tool]}
-      </a>
+      </button>
     );
   });
   return (
-    <div className="tools-group">
+    <div className={props.divClassName}>
       <h5>{props.types.name}</h5>
       {showTools}
     </div>
@@ -48,7 +47,14 @@ const SetupSelectButton = props => {
 const SetupOptions = () => {
   const tools = siteConfig.tools;
   const showCase = tools.map((types, i) => {
-    return <SetupSelectButton key={i} types={types} />;
+    return (
+      <SetupSelectButton
+          buttonClassName={"tools-button"}
+          divClassName={"tools-group"}
+          key={i}
+          types={types}
+      />
+    );
   });
   return (
     <div className="step-setup">
@@ -85,19 +91,31 @@ const StepInstallAndUsage = props => {
 };
 
 const StepFour = () => {
+  const buildToolButtons = siteConfig.buildTools.map((types, i) => {
+    return (
+      <SetupSelectButton
+          buttonClassName={"build-tools-button"}
+          divClassName={"build-tools-group"}
+          key={i}
+          types={types}
+      />
+    );
+  });
+
+  const buildToolExportGuides = buildToolsMD.map((tool, index) => (
+    <div className="build-items" data-title={tool.title} key={index}>
+      <MarkdownBlock key={index}>{tool["export"]}</MarkdownBlock>
+    </div>
+  ));
+
   return (
-    <div className="step-hidden step-setup">
+    <div id="build-tools" className="step-hidden step-setup">
       <h2>
         <span className="step-no">4</span>
-        <translate desc="setup page - step 4 one">Generate bloop configuration files</translate>
+        <translate desc="setup page - step 4 one">Export your build</translate>
       </h2>
-      <MarkdownBlock>
-        Great! Bloop has already been installed and the build server is running in the background.
-      </MarkdownBlock>
-      <MarkdownBlock>
-        [Learn the Basics](docs/what-is-bloop) and then start compiling, testing and running your projects by
-        following the [Usage Guide](docs/usage).
-      </MarkdownBlock>
+      {buildToolButtons}
+      {buildToolExportGuides}
     </div>
   );
 };
@@ -127,6 +145,7 @@ class Setup extends React.Component {
           <SetupHeader />
           <SetupContent />
           <script src={`${siteConfig.baseUrl}scripts/tools.js?t=${time}`} />
+          <script src={`${siteConfig.baseUrl}scripts/build-tools.js?t=${time}`} />
         </div>
       </div>
     );

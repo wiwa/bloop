@@ -27,11 +27,17 @@ function loadMD(fsPath) {
 }
 
 const tools = loadYaml("./tools.yml");
+const buildTools = loadYaml("./build-tools.yml");
 
 const toolsMD = findMarkDownSync("../docs/tools/");
 toolsMD.forEach(tool => {
   tool.install = loadMD(`${tool.path}/install.md`);
   tool.usage = loadMD(`${tool.path}/usage.md`);
+});
+
+const buildToolsMD = findMarkDownSync("../docs/build-tools/");
+buildToolsMD.forEach(buildTool => {
+  buildTool.export = loadMD(`${buildTool.path}/export.md`);
 });
 
 // List of projects/orgs using your project for the users page.
@@ -65,7 +71,7 @@ const siteConfig = {
 
   // For no header links in the top nav bar -> headerLinks: [],
   headerLinks: [
-    {page: 'setup', label: 'Setup'},
+    {page: 'setup', label: 'Install'},
     {doc: 'what-is-bloop', label: 'Docs'},
     {search: true},
     {href: repoUrl, label: 'GitHub'},
@@ -73,6 +79,8 @@ const siteConfig = {
 
   tools,
   toolsMD,
+  buildTools,
+  buildToolsMD,
 
   // If you have users set above, you add it here:
   users,
@@ -126,6 +134,7 @@ const siteConfig = {
 
   // Add custom scripts here that would be placed in <script> tags.
   scripts: [
+    'https://code.jquery.com/jquery-3.2.1.slim.min.js',
     'https://buttons.github.io/buttons.js',
     'https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js',
     '/scripts/code-block-buttons.js'
