@@ -8,7 +8,7 @@ sidebar_label: Integration guide
 
 <div class="diagram">
   <p>
-    <img src="/img/bloop-architecture-diagram.svg" alt="Bloop architecture diagram">
+    <img src="/bloop/img/bloop-architecture-diagram.svg" alt="Bloop architecture diagram">
   </p>
 </div>
 

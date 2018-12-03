@@ -82,7 +82,7 @@ const Hero = ({ language }) => (
         Bloop is a Scala build server.
       </h1>
       <p>
-        Compile, test and run Scala fast, today.
+        Compile, test and run Scala fast.
       </p>
 
       <div className="hero__announcement">
@@ -164,18 +164,26 @@ TldrSection.propTypes = {
 
 
 const Features = () => (
+  <div
+    style={{display: 'flex', justifyContent: 'center'}}>
   <Block layout="twoColumn">
     {[
       {
-        title: 'Use it with Your Favorite Build Tool',
+        title: 'Use it with your favorite build tool',
         content: 'Bloop supports the most popular JVM build tools in the Java and Scala community, with more integrations on their way!',
       },
       {
-        content: 'Bloop has a flexible architecture encouraging first-class integrations with any client supporting Scala compilation, testing and run.',
-        title: 'Write your Tool and Integrate with Bloop',
+        content:
+           "|            | Export build  |\n" +
+           "| -----------|-------------- |\n" +
+           "| **sbt**    | ✅            |\n" +
+           "| **Maven**  | ✅            |\n" +
+           "| **Gradle** | ✅            |\n" +
+           "| **mill**   | ✅            |\n"
       },
     ]}
   </Block>
+  </div>
 );
 
 const FeatureCallout = () => (
@@ -184,7 +192,7 @@ const FeatureCallout = () => (
     style={{textAlign: 'center'}}>
     <h2>An Initiative Of</h2>
     <img
-      src="/img/scala-center-logo.png"
+      src={imgUrl('scala-center-logo.png')}
       style={{maxWidth: '600px', padding: '30px'}}></img>
   </div>
 );

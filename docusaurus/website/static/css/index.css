@@ -2,6 +2,11 @@ body {
   background-color: #f5fcff;
 }
 
+.alignCenter {
+  display: flex;
+  justify-content: center;
+}
+
 .blockImage {
   max-width: 400px !important;
 }
