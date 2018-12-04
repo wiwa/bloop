@@ -73,6 +73,16 @@ const PromoSection = props => (
   </div>
 );
 
+const announcement =
+  <div className="hero__announcement">
+    <span>
+      <strong>Bloop 1.1.0 is out!</strong> Please read our{" "}
+      <a href="">announcement</a> and{" "}
+      <a href="">upgrade guide</a>{" "}
+      for more information.
+    </span>
+  </div>
+
 const Hero = ({ language }) => (
   <div className="hero">
     <div className="hero__container">
@@ -84,15 +94,6 @@ const Hero = ({ language }) => (
       <p>
         Compile, test and run Scala fast.
       </p>
-
-      <div className="hero__announcement">
-        <span>
-          <strong>Bloop 1.1.0 is out!</strong> Please read our{" "}
-          <a href="">announcement</a> and{" "}
-          <a href="">upgrade guide</a>{" "}
-          for more information.
-        </span>
-      </div>
     </div>
   </div>
 );
@@ -163,18 +164,16 @@ TldrSection.propTypes = {
 };
 
 
-const Features = () => (
-  <div
-    style={{display: 'flex', justifyContent: 'center'}}>
+const Features1 = () => (
   <Block layout="twoColumn">
     {[
       {
         title: 'Use it with your favorite build tool',
-        content: 'Bloop supports the most popular JVM build tools in the Java and Scala community, with more integrations on their way!',
+        content: 'Bloop supports the most popular JVM build tools in the Java and Scala community, with more integrations on their way! Export your build and benefit from faster compile times.',
       },
       {
         content:
-           "|            | Export build  |\n" +
+           "|            | Supported     |\n" +
            "| -----------|-------------- |\n" +
            "| **sbt**    | ✅            |\n" +
            "| **Maven**  | ✅            |\n" +
@@ -183,17 +182,35 @@ const Features = () => (
       },
     ]}
   </Block>
-  </div>
 );
+
+const intellijLogo = imgUrl("intellij-logo.png")
+const Features2 = () => (
+  <Block id="ideLogos" layout="threeColumn">
+    {[
+      {
+        content: '![Editors logos](' + imgUrl('editors-logos.svg') + ')'
+      },
+      {
+        title: 'Use it with IDEs',
+        content: 'Bloop integrates with IDEs and text editors to provide a short feedback cycle and reliable compiler diagnostics. Use Bloop with IntelliJ and [Metals](https://metals.rocks) (Visual Studio Code, Sublime Text, `vim` and Atom).',
+      },
+    ]}
+  </Block>
+);
+
 
 const FeatureCallout = () => (
   <div
     className="productShowcaseSection paddingBottom"
     style={{textAlign: 'center'}}>
-    <h2>An Initiative Of</h2>
+    <h2>Maintained by the Scala Center</h2>
+    <MarkdownBlock>
+    The Scala Center is a non-profit organization established at EPFL (École Polytechnique Federal de Lausanne) with the goals of promoting, supporting, and advancing the Scala language.
+    </MarkdownBlock>
     <img
       src={imgUrl('scala-center-logo.png')}
-      style={{maxWidth: '600px', padding: '30px'}}></img>
+      style={{paddingTop: '30px'}}></img>
   </div>
 );
 
@@ -270,7 +287,8 @@ class Index extends React.Component {
         <Hero language={language} />
         <TldrSection language={language} />
         <div className="mainContainer">
-          <Features />
+          <Features1 />
+          <Features2 />
           <FeatureCallout />
         </div>
       </div>

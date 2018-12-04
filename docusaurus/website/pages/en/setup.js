@@ -18,8 +18,13 @@ const SetupHeader = () => {
   return (
     <div className="page-header text-center">
       <h1>
-        <translate desc="setup page - header">Installing Bloop</translate>
+        <translate desc="setup page - header">Installation Guide</translate>
       </h1>
+      <p>
+        <translate desc="setup page - description">
+        Learn how to install and get your build working with Bloop.
+        </translate>
+      </p>
     </div>
   );
 };

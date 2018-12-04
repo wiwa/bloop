@@ -88,7 +88,7 @@ const siteConfig = {
   /* path to images for header/footer */
   headerIcon: 'img/orca-whale-white.svg',
   footerIcon: 'img/docusaurus.svg',
-  favicon: 'img/favicon.png',
+  favicon: 'img/favicon/favicon.ico',
 
   /* Colors for website */
   colors: {

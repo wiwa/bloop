@@ -7,8 +7,8 @@ body {
   justify-content: center;
 }
 
-.blockImage {
-  max-width: 400px !important;
+li ul {
+  margin-top: 0.5em;
 }
 
 table thead {
@@ -241,7 +241,7 @@ blockquote {
 
   .diagram {
     margin: 0px auto;
-    width: 60%;
+    width: 70%;
     margin-top: 3em;
     margin-bottom: 3em;
   }
@@ -289,7 +289,7 @@ blockquote {
 }
 
 .wrapper {
-  max-width: 1200px;
+  max-width: 70%;
 }
 
 .sponsors-special p {

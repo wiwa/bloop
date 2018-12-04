@@ -1,89 +1,211 @@
 ---
 id: usage
-title: Usage Guide
-sidebar_label: Usage Guide
+title: Quickstart
+sidebar_label: Quickstart
 ---
 
-> **Pre-requirement**: [install bloop](/setup) and [learn the Basics](what-is-bloop.md) before reading the
-> usage guide.
+## Requirements
 
-To use bloop you first need to generate Bloop configuration files from your build tool. These
-configuration files are JSON objects that define a build, its build graph, its inputs and its
-outputs. Next is an example of the simplest bloop configuration file possible.
+1. 60 seconds to read this guide
+1. A build with some projects in it (the guide assumes `foo` and `foo-test`)
+1. You have followed the [Installation Guide](../setup), which means:
+    * The build server is running in the background.
+    * The `bloop` CLI tool is installed in your machine.
+    * You have exported your build to Bloop.
+    
+## The basics
 
-```json
-{
-    "version" : "1.0.0",
-    "project" : {
-        "name" : "foo",
-        "directory" : "/disk/foo",
-        "sources" : ["/disk/foo/src/main/scala"],
-        "dependencies" : [],
-        "classpath" : ["/disk/foo/library/scala-library.jar"],
-        "out" : "/disk/foo/target",
-        "classesDir" : "/disk/foo/target/classes"
-    }
-}
-```
+Let's compile first the test project from scratch.
 
-This information needs to be extracted from every build tool to make bloop work for any Scala
-and Java build.
-
-## Supported Build Tools
-
-Bloop extracts build information from several build tools with varying degree of functionality.
-
-|                          | sbt        | Gradle   | Maven    | mill       | Bazel | Pants | Fury |
-| ------------------------ | ---------- | -------- | -------- | ---------- | ----- | ----- | ---- |
-| **Build Export**         | ✅         | ✅        | ✅ __*__ | ✅         |  ❌    |   ❌  | ✅   |
-| **Built-in Integration** | 📅 v1.1.1  |          |          | 📅 v1.1.1  |       |       |      |
-
-> __*__ Bloop can export Maven build, however the build plugin is not fully developed yet. If you
-want to help out, have a look [at the issue
-tracker](https://github.com/scalacenter/bloop/issues?q=is%3Aissue+is%3Aopen+maven+label%3Amaven)
-and say hi in our [Gitter channel](https://gitter.im/scalacenter/bloop).
-
-### Exporting Your Build
-
-"Build Export" is the simplest supported use case. It consists of two sequential steps:
-
-1. Generating bloop configuration files from the build.
-1. Running bloop CLI commands once the build generation is ready.
-
-The completions of these steps provides a quick developer workflow, provided that clients manually
-perform the first step whenever the files are missing or a change in the build tool occurs. The
-second step can be manual or automatic depending on the build client leveraged by the users.
-
-For example, once a build has already been exported, you can recompile a project via the CLI every
-time there is a file change with the following command.
+### Compiling
 
 ```bash
-$ bloop test foo -w
-Compiling foo (2 Scala sources)
-Compiled foo
-
-Watching 6 directories... (press Ctrl-C to interrupt)
+➜ bloop compile foo-test
+Compiling foo (1 Scala source)
+Non-compiled module 'compiler-bridge_2.12' for Scala 2.12.7. Compiling...
+  Compilation completed in 12.165s.
+Compiled foo (13176ms)
+Compiling foo-test (1 Scala source)
+Compiled foo-test (578ms)
 ```
 
-### Built-in Integration
+The first time you compile, Bloop resolves and compiles the compilation bridges for your Scala
+version if they are not found in the bloop cache. Then, it follows up with the incremental
+compilation.
 
-Exporting your build is supported by a large array of popular Scala and Java build tools. However,
-it is a tedious task that users must remember to run from time to time.
+As our logs tell us, Bloop has compiled both `foo-test` and `foo`. This is expected given that `foo`
+is a dependency of `foo-test` and it was not already compiled.
 
-Future versions of bloop will incorporate built-in integrations where running `compile`, `test` or
-`run` on a supported build tool will dispatch a build request to bloop's build server. Such
-integration will relieve users from exporting the build manually.
+### Testing
 
-## Supported Editor Integrations
+Once the tests are compiled, we can test them.
 
-Bloop implements the [Build Server Protocol (BSP)](https://github.com/scalacenter/bsp) and provides
-compilation diagnostics to editors and IDEs. There are two main editor integrations:
+```bash
+➜ bloop test foo
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 19ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
 
-1. [IntelliJ](https://www.jetbrains.com/idea/): the most popular Scala and Java IDE has an experimental
-   BSP integration that connects to bloop to fetch compiler diagnostics. IntelliJ users must export
-   the build every time there is a build change.
+===============================================
+Total duration: 19ms
+All 1 test suites passed.
+===============================================
+```
 
-1. [Metals](https://github.com/scalameta/metals): a language server for Scala. Metals features the best
-   Bloop integration in the Scala community. It generates the configuration files automatically
-   whenever a change is detected in sbt builds.
+If you notice, we run `bloop test foo` instead of `bloop test foo-test`, the project that actually
+contains the test sources. Bloop assumes that when you run `bloop test foo` you really mean the
+latter and therefore treats both the same. It's idiomatic to use the shorter version.
+
+### Running an application
+
+If our application defines one main method, we can run it:
+
+```bash
+➜ bloop run foo
+Hello, World!
+```
+
+And if there are more than one main method, you can specify which one to run with `-m` or `--main`:
+
+```bash
+➜ bloop run foo -m foo.HelloWorld
+Hello, World!
+```
+
+The `bloop run` command only accepts a project as a command.
+
+### Enable file watching
+
+When using the command-line tool, it's common to run a bloop task with file watching enabled. For
+example, you can run your tests in a loop with:
+
+```bash
+➜ bloop test foo -w
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 18ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
+
+===============================================
+Total duration: 18ms
+All 1 test suites passed.
+===============================================
+Watching 2 directories... (press Ctrl-C to interrupt)
+```
+
+`-w` or `--watch` is available for `compile`, `test` and `run`. As the last line tells us, you can
+interrupt file watching by pressing <kbd>Ctrl</kbd> + <kbd>C</kbd>.
+
+> It's not recommended for the moment to run `-w` for the moment if you use [Bloop via a text editor](ides/overview).
+
+### Cleaning the caches
+
+Clean the compilation caches in your build with:
+
+```bash
+➜ bloop clean foo-test
+➜
+```
+
+This operation is uncommon but might be useful if the incremental compiler state is causing spurious
+errors. `clean` does not remove class files, it only cleans the incremental compilation state. If
+you want to remove the class files, do it manually.
+ 
+By default, `bloop clean` only cleans the cache of a given project. If you want to clean the cache
+of all the dependent projects too, you can run it with `--include-dependencies` or `--propagate`.
+
+```bash
+➜ bloop clean foo-test --propagate
+➜
+```
+
+Now testing again should trigger the compilation of both `foo` and `foo-test`.
+
+```bash
+➜ bloop test foo
+Compiling foo (1 Scala source)
+Compiled foo (290ms)
+Compiling foo-test (1 Scala source)
+Compiled foo-test (455ms)
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 16ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
+
+===============================================
+Total duration: 16ms
+All 1 test suites passed.
+===============================================
+```
+
+### Testing downstream projects
+
+Just as `bloop clean`, `bloop test` only runs tests on a concrete project. You can run tests for
+your project and all your dependencies by using `--propagate` too, just as in the previous `clean`
+example.
+
+```bash
+➜ bloop test foo --propagate
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 16ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
+
+===============================================
+Total duration: 16ms
+All 1 test suites passed.
+===============================================
+```
+
+As expected, the output is the same as `bloop test foo` because `foo` has no dependencies defining
+test sources.
+
+### Testing only a specific test suite
+
+You can test only a specific test suite with `--only` or `-o`:
+
+```bash
+➜ bloop test foo -o CubeCalculatorTest
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 17ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
+
+===============================================
+Total duration: 17ms
+All 1 test suites passed.
+===============================================
+```
+
+### Passing arguments to test
+
+Pass arguments to the test framework after `--`:
+
+```bash
+➜ bloop test foo -- -h /disk/foo/target/html
+CubeCalculatorTest:
+- CubeCalculator.cube
+Execution took 11ms
+1 tests, 1 passed
+All tests in CubeCalculatorTest passed
+
+===============================================
+Total duration: 11ms
+All 1 test suites passed.
+===============================================
+```
+
+Test framework arguments are unique per test frameworks and parsed independently. Passing arguments
+specific to one test framework will work only if:
+
+1. Your test argument is a system property (`-Dkey=value`)
+1. Your test project uses only one test framework
+1. You have a project with tests of different test frameworks (e.g. Scalacheck and Scalatest) but
+you're filtering out tests that are part of only one framework (for example, via `--only`)
 

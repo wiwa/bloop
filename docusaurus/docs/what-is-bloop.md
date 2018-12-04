@@ -1,7 +1,7 @@
 ---
 id: what-is-bloop
-title: What is bloop
-sidebar_label: What is bloop
+title: What is Bloop
+sidebar_label: What is Bloop
 ---
 
 Bloop is a Scala build server developed by [the Scala Center][scalacenter]. It has three main goals:
@@ -27,16 +27,8 @@ Clients can connect to the build server in two ways:
 1. via the [Nailgun server protocol](https://github.com/facebook/nailgun), used by the built-in command-line application
 1. via the [Build Server Protocol (BSP)](https://github.com/scalacenter/bsp), used by clients such as [Metals](https://github.com/scalameta/metals) or [IntelliJ](https://www.jetbrains.com/idea/)
 
-<div class="diagram">
-  <p>
-    <img src="/img/bloop-architecture-diagram.svg" alt="Bloop architecture diagram">
-  </p>
-</div>
-
-
-<blockquote>
-  Interested in integrating with Bloop? Read the integration guide.
-</blockquote>
+> Do you want to integrate with bloop? The [Integration Guide](integration.md) explains all
+> you need to know to connect to Bloop via these two different protocols.
 
 ## The Principles
 
@@ -80,7 +72,7 @@ Edit, compile and test workflows are the bread and butter of software developmen
 editor are slow to respond, our productivity drops.
 
 Bloop lays stress on optimizing local development workflows to make the Scala developer feedback
-cycle as short as possible, encouraging better communication with clients and minimizing the amount
-of work run in every operation.
+cycle as short as possible. It achieves this by optimizing compilations based on the user actions
+and minimizing the amount of work run in every operation.
 
 [scalacenter]: https://scala.epfl.ch
