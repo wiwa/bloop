@@ -6,18 +6,16 @@ sidebar_label: Quickstart
 
 ## Requirements
 
-1. 60 seconds to read this guide
 1. A build with some projects in it (the guide assumes `foo` and `foo-test`)
 1. You have followed the [Installation Guide](../setup), which means:
     * The build server is running in the background.
     * The `bloop` CLI tool is installed in your machine.
     * You have exported your build to Bloop.
     
-## The basics
+
+## Compile
 
 Let's compile first the test project from scratch.
-
-### Compiling
 
 ```bash
 ➜ bloop compile foo-test
@@ -36,7 +34,7 @@ compilation.
 As our logs tell us, Bloop has compiled both `foo-test` and `foo`. This is expected given that `foo`
 is a dependency of `foo-test` and it was not already compiled.
 
-### Testing
+## Test
 
 Once the tests are compiled, we can test them.
 
@@ -58,7 +56,7 @@ If you notice, we run `bloop test foo` instead of `bloop test foo-test`, the pro
 contains the test sources. Bloop assumes that when you run `bloop test foo` you really mean the
 latter and therefore treats both the same. It's idiomatic to use the shorter version.
 
-### Running an application
+## Run an application
 
 If our application defines one main method, we can run it:
 
@@ -67,16 +65,29 @@ If our application defines one main method, we can run it:
 Hello, World!
 ```
 
-And if there are more than one main method, you can specify which one to run with `-m` or `--main`:
+The `bloop run` command only accepts a project as a command.
+
+## Run a concrete main method
+
+Bloop complains where there is more than one main method defined in your project and you run a
+vanilla `bloop run` invocation.
+
+```bash
+➜ bloop run foo
+[E] Multiple main classes found. Expected a default main class via command-line or in the configuration of project 'foo'
+[E] Use the following main classes:
+[E]  * CubeCalculator2
+[E]  * CubeCalculator
+```
+
+To fix the error, specify the main class you want to run with `-m` or `--main`:
 
 ```bash
 ➜ bloop run foo -m foo.HelloWorld
 Hello, World!
 ```
 
-The `bloop run` command only accepts a project as a command.
-
-### Enable file watching
+## Enable file watching
 
 When using the command-line tool, it's common to run a bloop task with file watching enabled. For
 example, you can run your tests in a loop with:
@@ -101,7 +112,7 @@ interrupt file watching by pressing <kbd>Ctrl</kbd> + <kbd>C</kbd>.
 
 > It's not recommended for the moment to run `-w` for the moment if you use [Bloop via a text editor](ides/overview).
 
-### Cleaning the caches
+## Clean the caches
 
 Clean the compilation caches in your build with:
 
@@ -142,7 +153,7 @@ All 1 test suites passed.
 ===============================================
 ```
 
-### Testing downstream projects
+## Test downstream projects
 
 Just as `bloop clean`, `bloop test` only runs tests on a concrete project. You can run tests for
 your project and all your dependencies by using `--propagate` too, just as in the previous `clean`
@@ -165,7 +176,7 @@ All 1 test suites passed.
 As expected, the output is the same as `bloop test foo` because `foo` has no dependencies defining
 test sources.
 
-### Testing only a specific test suite
+## Test only a specific test suite
 
 You can test only a specific test suite with `--only` or `-o`:
 
@@ -183,7 +194,7 @@ All 1 test suites passed.
 ===============================================
 ```
 
-### Passing arguments to test
+## Pass arguments to test
 
 Pass arguments to the test framework after `--`:
 
@@ -209,3 +220,48 @@ specific to one test framework will work only if:
 1. You have a project with tests of different test frameworks (e.g. Scalacheck and Scalatest) but
 you're filtering out tests that are part of only one framework (for example, via `--only`)
 
+## Summary
+
+You've just learned the most basic bloop commands. Learn more commands with `bloop --help`:
+
+```bash
+➜ bloop --help
+bloop 1.1.0
+Usage: bloop [options] [command] [command-options]
+
+
+Available commands: about, autocomplete, bsp, clean, compile, configure, console, help, link, projects, run, test
+Type `bloop 'command' --help` for help on an individual command
+     
+Type `--nailgun-help` for help on the Nailgun CLI tool.
+```
+
+If you're looking for the flags supported by a command such as `compile`, run `bloop compile --help`:
+
+```bash
+➜ bloop compile --help
+Command: compile
+Usage: bloop compile <project>
+  --project | -p  <value>
+        The project to compile (will be inferred from remaining cli args).
+  --incremental  
+        Compile the project incrementally. By default, true.
+  --pipeline  
+        Pipeline the compilation of modules in your build. By default, false.
+  --reporter  <value>
+        Pick reporter to show compilation messages. By default, bloop's used.
+  --watch | -w  
+        Run the command when projects' source files change. By default, false.
+  --config-dir | -c  <.bloop>
+        File path to the bloop config directory, defaults to `.bloop` in the current working directory.
+  --version | -v  
+        If set, print the about section at the beginning of the execution. Defaults to false.
+  --verbose  
+        If set, print out debugging information to stderr. Defaults to false.
+  --no-color  
+        If set, do not color output. Defaults to false.
+  --debug  <value>
+        Debug the execution of a concrete task.
+```
+
+For a complete overview, visit the [CLI `--help`](cli-reference) reference page.

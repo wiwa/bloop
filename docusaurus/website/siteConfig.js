@@ -52,6 +52,7 @@ const users = [
   },
 ];
 
+const baseUrl = '/bloop/'
 const repoUrl = 'https://github.com/scalacenter/bloop';
 const siteConfig = {
   title: 'Bloop', // Title for your website.
@@ -59,7 +60,7 @@ const siteConfig = {
   repoUrl,
 
   url: 'https://jvican.github.io', // Your website URL
-  baseUrl: '/bloop/', // Base URL for your project */
+  baseUrl,
 
   // For github.io type URLs, you would set the url and baseUrl like:
   //   url: 'https://facebook.github.io',
@@ -137,11 +138,11 @@ const siteConfig = {
     'https://code.jquery.com/jquery-3.2.1.slim.min.js',
     'https://buttons.github.io/buttons.js',
     'https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js',
-    'scripts/code-block-buttons.js'
+    baseUrl + 'scripts/code-block-buttons.js'
   ],
 
   stylesheets: [
-    "css/code-block-buttons.css"
+    baseUrl + "css/code-block-buttons.css"
   ],
 
   // On page navigation for the current documentation page.

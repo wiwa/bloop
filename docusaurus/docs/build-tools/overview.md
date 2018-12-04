@@ -6,9 +6,9 @@ sidebar_label: Overview
 
 Bloop supports several build tools with varying degree of functionality.
 
-|                          | sbt        | Gradle   | Maven    | mill       | Bazel | Pants | Fury |
+|                          | sbt        | Gradle   | Maven    | Mill       | Bazel | Pants | Fury |
 | ------------------------ | ---------- | -------- | -------- | ---------- | ----- | ----- | ---- |
-| **Build Export**         | ✅         | ✅        | ✅ __*__ | ✅         |  ❌    |   ❌  |    ✅   |
+| **Build Export**         | ✅         | ✅        | ✅       | ✅         |  ❌    |   ❌  |    ✅   |
 | **Built-in Compile / Test / Run** | 📅 planned  |          |          |            |       |       | ✅   |
 
 ## Build Export

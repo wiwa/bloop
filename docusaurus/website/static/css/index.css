@@ -2,6 +2,31 @@ body {
   background-color: #f5fcff;
 }
 
+.gridBlock div {
+    justifyContent: center;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 1.25em;
+}
+
+code[class*="language-"], pre[class*="language-"] {
+  font-family: Input Mono, Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.85em;
+}
+
+a .button {
+  color: #primaryColor;
+}
+
+.button {
+  border-radius: 8px;
+}
+
+.page-header {
+  padding: 9px;
+}
+
 .alignCenter {
   display: flex;
   justify-content: center;
@@ -19,8 +44,18 @@ table tr:nth-child(2n) {
   background-color: rgb(237, 252, 255);
 }
 
-.mainContainer a {
-  color: $secondaryColor;
+.mainContainer a:not(.button) {
+  color: #008B9B;
+  -o-transition:.5s;
+  -ms-transition:.5s;
+  -moz-transition:.5s;
+  -webkit-transition:.5s;
+  /* ...and now for the proper property */
+  transition:.5s;
+}
+
+.mainContainer a:not(.button):hover {
+  color: #00BED4;
 }
 
 .tools-group a {
@@ -43,8 +78,16 @@ table tr:nth-child(2n) {
   background-color: #e7f8ff;
 }
 
+.mainContainer {
+  padding-top: 1.5em;
+}
+
 .mainContainer h1, .mainContainer h2, .mainContainer h3, .mainContainer h4, .mainContainer h5, .mainContainer h6 {
     color: #005068 !important;
+}
+
+.mainContainer h2:first-child {
+  margin-top: 0.25em;
 }
 
 .token.keyword {
@@ -104,7 +147,7 @@ table tr:nth-child(2n) {
 .hero p {
   font-size: 1.125rem;
   font-weight: 600;
-  margin: 1rem 0 3.125rem;
+  margin: 1rem 0 1rem;
 }
 
 .hero__announcement {
@@ -203,6 +246,7 @@ blockquote {
 
   .hero p {
     font-size: 1.75rem;
+    margin: 1rem 0 2.5rem;
   }
 
   .projectLogo {

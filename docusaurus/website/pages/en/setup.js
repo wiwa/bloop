@@ -22,7 +22,8 @@ const SetupHeader = () => {
       </h1>
       <p>
         <translate desc="setup page - description">
-        Learn how to install and get your build working with Bloop.
+        The installation guide walks you through all the steps to
+        to install and get any of the supported build tools working with Bloop.
         </translate>
       </p>
     </div>
