@@ -7,7 +7,7 @@ sidebar_label: Quickstart
 ## Requirements
 
 1. A build with some projects in it (the guide assumes `foo` and `foo-test`)
-1. You have followed the [Installation Guide](../setup), which means:
+1. You have followed the [Installation Guide](/bloop/setup), which means:
     * The build server is running in the background.
     * The `bloop` CLI tool is installed in your machine.
     * You have exported your build to Bloop.
@@ -18,7 +18,7 @@ sidebar_label: Quickstart
 Let's compile first the test project from scratch.
 
 ```bash
-➜ bloop compile foo-test
+→ bloop compile foo-test
 Compiling foo (1 Scala source)
 Non-compiled module 'compiler-bridge_2.12' for Scala 2.12.7. Compiling...
   Compilation completed in 12.165s.
@@ -39,7 +39,7 @@ is a dependency of `foo-test` and it was not already compiled.
 Once the tests are compiled, we can test them.
 
 ```bash
-➜ bloop test foo
+→ bloop test foo
 CubeCalculatorTest:
 - CubeCalculator.cube
 Execution took 19ms
@@ -61,7 +61,7 @@ latter and therefore treats both the same. It's idiomatic to use the shorter ver
 If our application defines one main method, we can run it:
 
 ```bash
-➜ bloop run foo
+→ bloop run foo
 Hello, World!
 ```
 
@@ -73,7 +73,7 @@ Bloop complains where there is more than one main method defined in your project
 vanilla `bloop run` invocation.
 
 ```bash
-➜ bloop run foo
+→ bloop run foo
 [E] Multiple main classes found. Expected a default main class via command-line or in the configuration of project 'foo'
 [E] Use the following main classes:
 [E]  * CubeCalculator2
@@ -83,7 +83,7 @@ vanilla `bloop run` invocation.
 To fix the error, specify the main class you want to run with `-m` or `--main`:
 
 ```bash
-➜ bloop run foo -m foo.HelloWorld
+→ bloop run foo -m foo.HelloWorld
 Hello, World!
 ```
 
@@ -93,7 +93,7 @@ When using the command-line tool, it's common to run a bloop task with file watc
 example, you can run your tests in a loop with:
 
 ```bash
-➜ bloop test foo -w
+→ bloop test foo -w
 CubeCalculatorTest:
 - CubeCalculator.cube
 Execution took 18ms
@@ -117,8 +117,8 @@ interrupt file watching by pressing <kbd>Ctrl</kbd> + <kbd>C</kbd>.
 Clean the compilation caches in your build with:
 
 ```bash
-➜ bloop clean foo-test
-➜
+→ bloop clean foo-test
+→
 ```
 
 This operation is uncommon but might be useful if the incremental compiler state is causing spurious
@@ -129,14 +129,14 @@ By default, `bloop clean` only cleans the cache of a given project. If you want 
 of all the dependent projects too, you can run it with `--include-dependencies` or `--propagate`.
 
 ```bash
-➜ bloop clean foo-test --propagate
-➜
+→ bloop clean foo-test --propagate
+→
 ```
 
 Now testing again should trigger the compilation of both `foo` and `foo-test`.
 
 ```bash
-➜ bloop test foo
+→ bloop test foo
 Compiling foo (1 Scala source)
 Compiled foo (290ms)
 Compiling foo-test (1 Scala source)
@@ -160,7 +160,7 @@ your project and all your dependencies by using `--propagate` too, just as in th
 example.
 
 ```bash
-➜ bloop test foo --propagate
+→ bloop test foo --propagate
 CubeCalculatorTest:
 - CubeCalculator.cube
 Execution took 16ms
@@ -181,7 +181,7 @@ test sources.
 You can test only a specific test suite with `--only` or `-o`:
 
 ```bash
-➜ bloop test foo -o CubeCalculatorTest
+→ bloop test foo -o CubeCalculatorTest
 CubeCalculatorTest:
 - CubeCalculator.cube
 Execution took 17ms
@@ -199,7 +199,7 @@ All 1 test suites passed.
 Pass arguments to the test framework after `--`:
 
 ```bash
-➜ bloop test foo -- -h /disk/foo/target/html
+→ bloop test foo -- -h /disk/foo/target/html
 CubeCalculatorTest:
 - CubeCalculator.cube
 Execution took 11ms
@@ -225,7 +225,7 @@ you're filtering out tests that are part of only one framework (for example, via
 You've just learned the most basic bloop commands. Learn more commands with `bloop --help`:
 
 ```bash
-➜ bloop --help
+→ bloop --help
 bloop 1.1.0
 Usage: bloop [options] [command] [command-options]
 
@@ -239,7 +239,7 @@ Type `--nailgun-help` for help on the Nailgun CLI tool.
 If you're looking for the flags supported by a command such as `compile`, run `bloop compile --help`:
 
 ```bash
-➜ bloop compile --help
+→ bloop compile --help
 Command: compile
 Usage: bloop compile <project>
   --project | -p  <value>

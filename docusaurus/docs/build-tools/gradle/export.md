@@ -15,7 +15,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'ch.epfl.scala:gradle-bloop_2.11:1.0.0+37-ad2ae774'
+    classpath 'ch.epfl.scala:gradle-bloop_2.11:1.1.0'
   }
 }
 ```
@@ -61,6 +61,9 @@ where:
 1. `foo` comes from the compile source set; and,
 1. `foo-test` comes from the test source set and depends on `foo`
 
+> If you want to configure the installation step, head to [the Bloop Maven documentation
+page](build-tools/maven.md).
+
 ## Verify installation and export
 
 > Remember that the build server must be running in the background, as suggested by the [Setup
@@ -97,5 +100,9 @@ Here's a list of bloop commands you can run next to start playing with bloop:
 1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
 1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
 
-After verifying the export, you can continue using Bloop's command-line application or any build
-client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
+## Next steps
+
+Start using [Bloop with the CLI](docs/usage) or [configure it with the supported IDEs](docs/ides/overview).
+
+If you want to configure the installation step or learn more about the integration, visit the
+[Gradle documentation page](docs/build-tools/gradle).

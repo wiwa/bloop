@@ -25,6 +25,9 @@ where:
 1. `foo` comes from the compile source set; and,
 1. `foo-test` comes from the test source set and depends on `foo`
 
+> If you want to configure the installation step, head to [the Bloop mill documentation
+page](build-tools/mill.md).
+
 ## Verify installation and export
 
 > Remember that the build server must be running in the background, as suggested by the [Setup
@@ -61,3 +64,11 @@ Here's a list of bloop commands you can run next to start playing with bloop:
 
 After verifying the export, you can continue using Bloop's command-line application or any build
 client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
+
+## Next steps
+
+Start using [Bloop with the CLI](docs/usage) or [configure it with the supported
+IDEs](docs/ides/overview).
+
+If you want to configure the installation step or learn more about the integration, visit the
+[Mill documentation page](docs/build-tools/mill).

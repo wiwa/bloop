@@ -66,3 +66,11 @@ Here's a list of bloop commands you can run next to start playing with bloop:
 1. `bloop compile --help`: shows the help section for compile.
 1. `bloop compile foo-test`: compiles foo's `src/main` and `src/test`.
 1. `bloop test foo-test -w`: runs foo tests repeatedly with file watching enabled.
+
+## Next steps
+
+Start using [Bloop with the CLI](docs/usage) or [configure it with the supported
+IDEs](docs/ides/overview).
+
+If you want to configure the installation step or learn more about the integration, visit the
+[sbt documentation page](docs/build-tools/sbt).

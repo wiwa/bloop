@@ -69,3 +69,11 @@ Here's a list of bloop commands you can run next to start playing with bloop:
 
 After verifying the export, you can continue using Bloop's command-line application or any build
 client integrating with Bloop, such as [Metals](https://scalameta.org/metals/).
+
+## Next steps
+
+Start using [Bloop with the CLI](docs/usage) or [configure it with the supported
+IDEs](docs/ides/overview).
+
+If you want to configure the installation step or learn more about the integration, visit the
+[Maven documentation page](docs/build-tools/maven).

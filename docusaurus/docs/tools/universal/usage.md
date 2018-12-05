@@ -97,8 +97,9 @@ $ ln -s $HOME/.bloop/xdg/bloop.desktop $HOME/.config/autostart/
 
 ### Command-Line Completions
 
-Bloop supports command-line completions in bash, zsh and fish. The installation process requires you
-to install the completions manually. Follow the following instructions to get set up.
+Bloop supports command-line completions in bash, zsh and fish. The use of command-line
+autocompletions is recommended as it significantly improves the user experience. The installation
+of autocompletions via `curl` requires you to configure the completions manually.
 
 > Note that the following instructions assume that the bloop installation directory is the default
 `$HOME/.bloop`.

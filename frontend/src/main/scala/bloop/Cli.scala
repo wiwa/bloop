@@ -13,7 +13,6 @@ import caseapp.core.{DefaultBaseCommand, Messages}
 import com.martiansoftware.nailgun.NGContext
 import _root_.monix.eval.Task
 import bloop.engine.tasks.Tasks
-import javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag
 
 import scala.util.control.NonFatal
 

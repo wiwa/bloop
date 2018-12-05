@@ -1,6 +1,6 @@
 
 ```sh
-curl -L https://github.com/scalacenter/bloop/releases/download/v1.0.0/install.py | python
+curl -L https://github.com/scalacenter/bloop/releases/download/v1.1.0/install.py | python
 ```
 
 Bloop installs under the standard `$HOME/.bloop` directory.

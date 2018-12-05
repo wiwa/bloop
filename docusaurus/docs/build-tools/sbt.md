@@ -65,11 +65,49 @@ bloopAggregateSourceDependencies in Global := true
 
 ## Download dependencies sources
 
-// metals
-// go to definition
+To enable source classifiers and download the sources of your binary dependencies, you can enabled
+the following setting in your `build.sbt`:
 
 ```scala
 bloopExportJarClassifiers in Global := Some(Set("sources"))
+```
+
+This option is required if you are using bloop with IDEs (e.g. Metals or IntelliJ) and expect
+navigation to binary dependencies to work. After the option has been enabled, the bloop
+configuration files of your projects should have one artifact per module with the "sources"
+classifier.
+
+```json
+"resolution" : {
+    "modules" : [
+        {
+            "organization" : "org.scala-lang",
+            "name" : "scala-library",
+            "version" : "2.12.7",
+            "configurations" : "default",
+            "artifacts" : [
+                {
+                    "name" : "scala-library",
+                    "checksum" : {
+                        "type" : "sha1",
+                        "digest" : "c5a8eb12969e77db4c0dd785c104b59d226b8265"
+                    },
+                    "path" : "/disk/Caches/scala-library-2.12.7.jar"
+                },
+                {
+                    "name" : "scala-library",
+                    "classifier" : "javadoc",
+                    "path" : "/disk/Caches/scala-library-2.12.7-javadoc.jar"
+                },
+                {
+                    "name" : "scala-library",
+                    "classifier" : "sources",
+                    "path" : "/disk/Caches/scala-library-2.12.7-sources.jar"
+                }
+            ]
+        }
+    ]
+}
 ```
 
 ## Export main class from sbt
