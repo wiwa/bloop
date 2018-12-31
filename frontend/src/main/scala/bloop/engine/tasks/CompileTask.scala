@@ -65,7 +65,6 @@ object CompileTask {
           val (scalacOptions, compileMode) = {
             if (!pipeline) (project.scalacOptions.toArray, userCompileMode)
             else {
-
               val scalacOptions = (GeneratePicklesFlag :: project.scalacOptions).toArray
               val mode = userCompileMode match {
                 case CompileMode.Sequential =>
