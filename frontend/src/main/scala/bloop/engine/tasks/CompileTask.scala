@@ -140,9 +140,7 @@ object CompileTask {
       }
     }
 
-    def setup(project: Project): CompileBundle = {
-      CompileBundle(project)
-    }
+    def setup(project: Project): Task[CompileBundle] = CompileBundle.computeFrom(project)
 
     CompileGraph.traverse(dag, setup(_), compile(_), pipeline, logger).flatMap { partialDag =>
       val partialResults = Dag.dfs(partialDag)

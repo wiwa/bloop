@@ -3,8 +3,11 @@ package bloop.engine.tasks.compilation
 import bloop.data.Project
 import bloop.engine.Feedback
 import bloop.io.{AbsolutePath, Paths}
+import bloop.util.ByteHasher
 import bloop.{Compiler, ScalaInstance}
-import sbt.internal.inc.InitialChanges
+import monix.eval.Task
+import sbt.internal.inc.bloop.ClasspathHashing
+import xsbti.compile.FileHash
 
 /**
  * Define a bundle of high-level information about a project that is going to be compiled.
@@ -25,11 +28,15 @@ import sbt.internal.inc.InitialChanges
  * @param project The project we want to compile.
  * @param javaSources The found java sources in the file system.
  * @param scalaSources The found scala sources in the file system.
+ * @param sourceHashes The hashed sources that represent a compile bundle.
+ * @param classpathHashes The classpath hashes (with hashes populated only for files, not dirs)
  */
 final case class CompileBundle(
     project: Project,
     javaSources: List[AbsolutePath],
     scalaSources: List[AbsolutePath],
+    sourceHashes: List[CompileBundle.HashedSource],
+    classpathHashes: Seq[FileHash]
 ) {
   val isJavaOnly: Boolean = scalaSources.isEmpty && !javaSources.isEmpty
 
@@ -71,10 +78,29 @@ case class CompileSourcesAndInstance(
 )
 
 object CompileBundle {
-  def apply(project: Project): CompileBundle = {
+  case class HashedSource(source: AbsolutePath, hash: Int)
+  def computeFrom(project: Project): Task[CompileBundle] = {
+    def hashSources(sources: List[AbsolutePath]): Task[List[HashedSource]] = {
+      Task.gather {
+        sources.map { source =>
+          Task {
+            val bytes = java.nio.file.Files.readAllBytes(source.underlying)
+            val hash = ByteHasher.hashBytes(bytes)
+            HashedSource(source, hash)
+          }
+        }
+      }
+    }
+
     val sources = project.sources.distinct
     val javaSources = sources.flatMap(src => Paths.pathFilesUnder(src, "glob:**.java")).distinct
     val scalaSources = sources.flatMap(src => Paths.pathFilesUnder(src, "glob:**.scala")).distinct
-    new CompileBundle(project, javaSources, scalaSources)
+    val allSources = javaSources ++ scalaSources
+    val fileCompilationClasspath = project.compilationClasspath.map(_.toFile)
+    val classpathHashesTask = ClasspathHashing.hash(fileCompilationClasspath)
+    val sourceHashesTask = hashSources(allSources.filterNot(_.isDirectory))
+    Task.mapBoth(classpathHashesTask, sourceHashesTask) { (classpathHashes, sourceHashes) =>
+      new CompileBundle(project, javaSources, scalaSources, sourceHashes, classpathHashes)
+    }
   }
 }
