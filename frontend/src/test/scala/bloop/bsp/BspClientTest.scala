@@ -1,9 +1,11 @@
 package bloop.bsp
 
+import java.io.File
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.util.concurrent.ExecutionException
+import java.util.concurrent.{ConcurrentHashMap, ExecutionException}
 
-import bloop.cli.Commands
+import bloop.cli.{Commands, CommonOptions}
 import bloop.data.Project
 import bloop.engine.State
 import bloop.engine.caches.ResultsCache
@@ -13,6 +15,7 @@ import bloop.logging.{BspClientLogger, DebugFilter, RecordingLogger, Slf4jAdapte
 import bloop.util.TestUtil
 import ch.epfl.scala.bsp
 import ch.epfl.scala.bsp.endpoints
+import monix.eval.Task
 import monix.execution.{ExecutionModel, Scheduler}
 import monix.{eval => me}
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
@@ -161,6 +164,186 @@ object BspClientTest {
           retryBackoff(source, maxRetries - 1, firstDelay * 2)
             .delayExecution(firstDelay)
         else me.Task.raiseError(ex)
+    }
+  }
+
+  sealed trait BspClientAction
+  case object Compile extends BspClientAction
+  case class CreateFile(path: AbsolutePath, contents: String) extends BspClientAction
+  case class DeleteFile(path: AbsolutePath) extends BspClientAction
+  case class OverwriteFile(path: AbsolutePath, contents: String) extends BspClientAction
+
+  private type Result = Either[Response.Error, bsp.CompileResult]
+  def testCompile(
+      bspCmd: Commands.ValidatedBsp,
+      testActions: List[BspClientAction],
+      compileTarget: bsp.BuildTargetIdentifier => Boolean
+  ): Map[bsp.BuildTargetIdentifier, String] = {
+    val compilationResults = new StringBuilder()
+    val logger = new BspClientLogger(new RecordingLogger)
+
+    def exhaustiveTestCompile(target: bsp.BuildTarget)(implicit client: LanguageClient) = {
+      def compileProject: Task[Either[String, Unit]] = {
+        endpoints.BuildTarget.compile
+          .request(bsp.CompileParams(List(target.id), None, None))
+          .map {
+            case Right(r) => compilationResults.++=(s"${r.statusCode}"); Right(r)
+            case Left(e) =>
+              Left(
+                s"""
+                   |Compilation error for request ${e.id}:
+                   |${e.error}""".stripMargin
+              )
+          }
+      }
+
+      import scala.collection.mutable
+      val createdFiles = mutable.HashSet.empty[AbsolutePath]
+      val originalFiles = mutable.HashMap.empty[AbsolutePath, String]
+      def runTestAction(action: BspClientAction): Task[Either[String, Unit]] = {
+        action match {
+          case Compile => compileProject
+          case CreateFile(path, contents) =>
+            Task {
+              if (path.exists) {
+                Left(s"File path $path already exists, use `OverwriteFile` instead of `CreateFile`")
+              } else {
+                createdFiles.+=(path)
+                Files.write(path.underlying, contents.getBytes(StandardCharsets.UTF_8))
+                Right(())
+              }
+            }
+
+          case DeleteFile(path) =>
+            Task {
+              if (path.exists) {
+                val originalContents = new String(path.readAllBytes, StandardCharsets.UTF_8)
+                originalFiles.+=(path -> originalContents)
+                Files.delete(path.underlying)
+                Right(())
+              } else {
+                Left(s"File path ${path} doesn't exist, we cannot delete it.")
+              }
+            }
+
+          case OverwriteFile(path, contents) =>
+            Task {
+              if (!originalFiles.contains(path)) {
+                val originalContents = new String(path.readAllBytes, StandardCharsets.UTF_8)
+                originalFiles.+=(path -> originalContents)
+              }
+
+              Files.write(path.underlying, contents.getBytes(StandardCharsets.UTF_8))
+              Right(())
+            }
+        }
+      }
+
+      testActions.foldLeft()
+      val driver = Task.sequence(testActions.map(runTestAction(_)))
+      val deleteAllResources = Task {
+        createdFiles.foreach { createdFileDuringTest =>
+          Files.delete(createdFileDuringTest.underlying)
+        }
+
+        originalFiles.foreach {
+          case (originalFileBeforeTest, originalContents) =>
+            Files.write(
+              originalFileBeforeTest.underlying,
+              originalContents.getBytes(StandardCharsets.UTF_8)
+            )
+        }
+      }
+
+      driver.doOnCancel(deleteAllResources).doOnFinish(_ => deleteAllResources)
+    }
+
+    def clientWork(implicit client: LanguageClient) = {
+      endpoints.Workspace.buildTargets.request(bsp.WorkspaceBuildTargetsRequest()).flatMap { ts =>
+        ts match {
+          case Right(workspaceTargets) =>
+            workspaceTargets.targets.find(t => compileTarget(t.id)) match {
+              case Some(t) => exhaustiveTestCompile(t)
+              case None => Task.now(Left(Response.internalError(s"Missing '$MainProject'")))
+            }
+          case Left(error) =>
+            Task.now(Left(Response.internalError(s"Target request failed with $error.")))
+        }
+      }
+    }
+
+    val startedTask = scala.collection.mutable.HashSet[bsp.TaskId]()
+    val stringifiedDiagnostics = new ConcurrentHashMap[bsp.BuildTargetIdentifier, StringBuilder]()
+    val latestTaskIdPerTarget = new ConcurrentHashMap[bsp.BuildTargetIdentifier, String]()
+
+    val addServicesTest = { (s: Services) =>
+      val services = s
+        .notification(endpoints.Build.taskStart) { taskStart =>
+          taskStart.dataKind match {
+            case Some(bsp.TaskDataKind.CompileTask) =>
+              val json = taskStart.data.get
+              bsp.CompileTask.decodeCompileTask(json.hcursor) match {
+                case Left(failure) => ???
+                case Right(compileTask) =>
+                  // Keep the id of the started compilation task up to date to associate diagnostics
+                  latestTaskIdPerTarget.compute(
+                    compileTask.target,
+                    (btid, _) => taskStart.taskId.id
+                  )
+
+                  ???
+              }
+            case _ => ???
+          }
+        }
+        .notification(endpoints.Build.taskFinish) { taskFinish =>
+          taskFinish.dataKind match {
+            case Some(bsp.TaskDataKind.CompileReport) =>
+              val json = taskFinish.data.get
+              bsp.CompileReport.decodeCompileReport(json.hcursor) match {
+                case Left(failure) => ???
+                case Right(report) => ???
+              }
+            case _ => ???
+          }
+        }
+        .notification(endpoints.Build.publishDiagnostics) {
+          case p @ bsp.PublishDiagnosticsParams(tid, btid, _, diagnostics, reset) =>
+            stringifiedDiagnostics.compute(
+              btid,
+              (_, builder0) => {
+                val builder = if (builder0 == null) new StringBuilder() else builder0
+                val baseDir = {
+                  val wp = CommonOptions.default.workingPath
+                  if (wp.underlying.endsWith("frontend")) wp
+                  else wp.resolve("frontend")
+                }
+
+                //if (!tid.uri.value.startsWith("file:///")) ???
+
+                val latestId = Option(latestTaskIdPerTarget.get(btid)).getOrElse("no-id")
+                val relativePath = AbsolutePath(tid.uri.toPath).toRelative(baseDir)
+                val canonical = relativePath.toString.replace(File.separatorChar, '/')
+                val report =
+                  diagnostics.map(_.toString.replace("\n", " ").replace(System.lineSeparator, " "))
+                builder
+                  .++=(s"#$latestId: $canonical\n")
+                  .++=(s"  -> $report\n")
+                  .++=(s"  -> reset = $reset\n")
+              }
+            )
+        }
+    }
+
+    reportIfError(logger) {
+      BspClientTest.runTest(
+        bspCmd,
+        configDir,
+        logger,
+        addServicesTest,
+        addDiagnosticsHandler = false
+      )(c => clientWork(c))
+      ???
     }
   }
 }
