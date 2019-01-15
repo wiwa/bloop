@@ -204,10 +204,14 @@ object BspClientTest {
       configDir: AbsolutePath,
       expectErrors: Boolean = false
   ): Map[bsp.BuildTargetIdentifier, String] = {
+    import scala.collection.mutable
     var compileIteration = 1
     val compilationResults = new StringBuilder()
     val logger = new BspClientLogger(new RecordingLogger)
-    val stringifiedDiagnostics = new ConcurrentHashMap[bsp.BuildTargetIdentifier, StringBuilder]()
+    type NotificationId = (bsp.BuildTargetIdentifier, Int)
+    val taskStartNotifications = mutable.HashMap.empty[NotificationId, String]
+    val taskFinishNotifications = mutable.HashMap.empty[NotificationId, String]
+    val stringifiedDiagnostics = new ConcurrentHashMap[NotificationId, List[String]]()
 
     def runFromWorkspaceTargets(targets: List[bsp.BuildTarget])(implicit client: LanguageClient) = {
       def compileProject(tid: bsp.BuildTargetIdentifier): Task[Either[String, Unit]] = {
@@ -329,21 +333,34 @@ object BspClientTest {
       finalResult.doOnCancel(deleteAllResources).doOnFinish(_ => deleteAllResources).map { res =>
         res.map { _ =>
           targets.map { target =>
-            val tid = target.id
-            tid -> Option(stringifiedDiagnostics.get(tid)).map(_.mkString).getOrElse("")
+            val btid = target.id
+            val diagnosticsBuilder = new StringBuilder
+            for (i <- 0 to compileIteration) {
+              val notificationId = (btid, i)
+              diagnosticsBuilder.++=(taskStartNotifications.getOrElse(notificationId, ""))
+              val currentDiagnostics =
+                Option(stringifiedDiagnostics.get(notificationId)).getOrElse(Nil)
+
+              val bufferedDiagnostics = new mutable.ListBuffer[String]
+              currentDiagnostics.foreach { diagnostic =>
+                if (diagnostic.contains("reset = true")) {
+                  bufferedDiagnostics.sorted.foreach { buffered =>
+                    diagnosticsBuilder.++=(buffered)
+                  }
+                  bufferedDiagnostics.clear()
+                  diagnosticsBuilder.++=(diagnostic)
+                } else {
+                  bufferedDiagnostics.+=(diagnostic)
+                }
+              }
+
+              bufferedDiagnostics.foreach(diagnostic => diagnosticsBuilder.++=(diagnostic))
+              diagnosticsBuilder.++=(taskFinishNotifications.getOrElse(notificationId, ""))
+            }
+            btid -> diagnosticsBuilder.mkString
           }.toMap
         }
       }
-    }
-
-    def addToStringReport(
-        btid: bsp.BuildTargetIdentifier,
-        add: StringBuilder => StringBuilder): Unit = {
-      stringifiedDiagnostics.compute(
-        btid,
-        (_, builder0) => add(if (builder0 == null) new StringBuilder() else builder0)
-      )
-      ()
     }
 
     val addServicesTest: Services => Services = { (s: Services) =>
@@ -354,15 +371,20 @@ object BspClientTest {
               bsp.CompileTask.decodeCompileTask(json.hcursor) match {
                 case Left(failure) => ()
                 case Right(compileTask) =>
-                  addToStringReport(
-                    compileTask.target,
-                    (builder: StringBuilder) => {
-                      builder.++=(s"#${compileIteration}: task start ${taskStart.taskId.id}\n")
-                      taskStart.message.foreach(msg => builder.++=(s"  -> Msg: ${msg}\n"))
-                      taskStart.dataKind.foreach(msg => builder.++=(s"  -> Data kind: ${msg}\n"))
-                      builder
-                    }
-                  )
+                  val builder = new StringBuilder
+                  val notificationId = compileTask.target -> compileIteration
+
+                  val previouslyReported = taskStartNotifications.get(notificationId) match {
+                    case Some(previous) => previous
+                    case None => ""
+                  }
+
+                  builder.++=(previouslyReported)
+                  builder.++=(s"#${compileIteration}: task start ${taskStart.taskId.id}\n")
+                  taskStart.message.foreach(msg => builder.++=(s"  -> Msg: ${msg}\n"))
+                  taskStart.dataKind.foreach(msg => builder.++=(s"  -> Data kind: ${msg}\n"))
+                  val taskStartNotification = builder.mkString
+                  taskStartNotifications.+=(notificationId -> taskStartNotification)
               }
             case _ => ()
           }
@@ -375,16 +397,20 @@ object BspClientTest {
               bsp.CompileReport.decodeCompileReport(json.hcursor) match {
                 case Left(failure) => ()
                 case Right(report) =>
-                  addToStringReport(
-                    report.target,
-                    (builder: StringBuilder) => {
-                      builder.++=(s"#${compileIteration}: task finish ${taskFinish.taskId.id}\n")
-                      builder.++=(s"  -> errors ${report.errors}, warnings ${report.warnings}\n")
-                      taskFinish.message.foreach(msg => builder.++=(s"  -> Msg: ${msg}\n"))
-                      taskFinish.dataKind.foreach(msg => builder.++=(s"  -> Data kind: ${msg}\n"))
-                      builder
-                    }
-                  )
+                  val builder = new StringBuilder
+                  val notificationId = report.target -> compileIteration
+                  val previouslyReported = taskFinishNotifications.get(notificationId) match {
+                    case Some(previous) => previous
+                    case None => ""
+                  }
+
+                  builder.++=(previouslyReported)
+                  builder.++=(s"#${compileIteration}: task finish ${taskFinish.taskId.id}\n")
+                  builder.++=(s"  -> errors ${report.errors}, warnings ${report.warnings}\n")
+                  taskFinish.message.foreach(msg => builder.++=(s"  -> Msg: ${msg}\n"))
+                  taskFinish.dataKind.foreach(msg => builder.++=(s"  -> Data kind: ${msg}\n"))
+                  val taskFinishNotification = builder.mkString
+                  taskFinishNotifications.+=(notificationId -> taskFinishNotification)
               }
             case _ => ()
           }
@@ -393,9 +419,11 @@ object BspClientTest {
         }
         .notification(endpoints.Build.publishDiagnostics) {
           case p @ bsp.PublishDiagnosticsParams(tid, btid, _, diagnostics, reset) =>
-            addToStringReport(
-              btid,
-              (builder: StringBuilder) => {
+            val notificationId = btid -> compileIteration
+            stringifiedDiagnostics.compute(
+              notificationId,
+              (_, received) => {
+                val builder = new StringBuilder
                 val pathString = {
                   val baseDir = {
                     // Find out the current working directory of the workspace instead of project
@@ -418,10 +446,12 @@ object BspClientTest {
                     .replace("\n", " ")
                     .replace(System.lineSeparator, " ")
                 )
-                builder
+                val diagnostic = builder
                   .++=(s"#$compileIteration: $canonical\n")
                   .++=(s"  -> $report\n")
                   .++=(s"  -> reset = $reset\n")
+                  .mkString
+                diagnostic :: (if (received == null) Nil else received)
               }
             )
             ()

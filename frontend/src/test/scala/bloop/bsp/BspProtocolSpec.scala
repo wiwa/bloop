@@ -448,14 +448,14 @@ class BspProtocolSpec {
         |#2: task start 3
         |  -> Msg: Compiling test-project (3 Scala sources)
         |  -> Data kind: compile-task
-        |#2: test-project/jvm/src/main/scala/Source1.scala
-        |  -> List(Diagnostic(Range(Position(2,32),Position(2,36)),Some(Warning),None,None,local val in method foo is never used,None))
+        |#2: test-project/jvm/src/main/scala/Source3.scala
+        |  -> List(Diagnostic(Range(Position(2,68),Position(2,68)),Some(Error),None,None,type mismatch;  found   : Int(1)  required: String,None))
         |  -> reset = true
         |#2: test-project/jvm/src/main/scala/Source2.scala
         |  -> List(Diagnostic(Range(Position(2,29),Position(2,29)),Some(Error),None,None,type mismatch;  found   : String("")  required: Int,None))
         |  -> reset = true
-        |#2: test-project/jvm/src/main/scala/Source3.scala
-        |  -> List(Diagnostic(Range(Position(2,68),Position(2,68)),Some(Error),None,None,type mismatch;  found   : Int(1)  required: String,None))
+        |#2: test-project/jvm/src/main/scala/Source1.scala
+        |  -> List(Diagnostic(Range(Position(2,32),Position(2,36)),Some(Warning),None,None,local val in method foo is never used,None))
         |  -> reset = true
         |#2: task finish 3
         |  -> errors 2, warnings 1
@@ -464,14 +464,14 @@ class BspProtocolSpec {
         |#3: task start 4
         |  -> Msg: Compiling test-project (3 Scala sources)
         |  -> Data kind: compile-task
-        |#3: test-project/jvm/src/main/scala/Source3.scala
-        |  -> List(Diagnostic(Range(Position(2,68),Position(2,68)),Some(Error),None,None,type mismatch;  found   : Int(1)  required: String,None))
+        |#3: test-project/jvm/src/main/scala/Source1.scala
+        |  -> List()
         |  -> reset = true
         |#3: test-project/jvm/src/main/scala/Source2.scala
         |  -> List()
         |  -> reset = true
-        |#3: test-project/jvm/src/main/scala/Source1.scala
-        |  -> List()
+        |#3: test-project/jvm/src/main/scala/Source3.scala
+        |  -> List(Diagnostic(Range(Position(2,68),Position(2,68)),Some(Error),None,None,type mismatch;  found   : Int(1)  required: String,None))
         |  -> reset = true
         |#3: task finish 4
         |  -> errors 1, warnings 0
@@ -577,7 +577,7 @@ class BspProtocolSpec {
     )
   }
 
-  def testCompileClearingDiagnostics(
+  def testCompileDiagnosticsWhenNoOps(
       createBspCommand: AbsolutePath => Commands.ValidatedBsp
   ): Unit = {
     import BspClientTest.BspClientAction._
@@ -975,14 +975,14 @@ class BspProtocolSpec {
     if (!BspServer.isWindows) {
       testCompile(createLocalBspCommand(configDir))
       testCompilePreviousProblemsAreReported(createLocalBspCommand(configDir))
-
-      testCompileClearingDiagnostics(createLocalBspCommand(_))
+      testCompileDiagnosticsWhenNoOps(createLocalBspCommand(_))
     }
   }
 
   @Test def TestCompileViaTcp(): Unit = {
     testCompile(createTcpBspCommand(configDir, verbose = true))
     testCompilePreviousProblemsAreReported(createTcpBspCommand(configDir, verbose = true))
+    testCompileDiagnosticsWhenNoOps(createTcpBspCommand(_))
   }
 
   // TODO(jvican): Enable these tests back after partial migration to v2 is done
