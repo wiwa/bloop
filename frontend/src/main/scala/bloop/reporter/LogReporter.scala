@@ -56,7 +56,7 @@ final class LogReporter(
     // TODO(jvican): Fix https://github.com/scalacenter/bloop/issues/386 here
     require(sources.size > 0) // This is an invariant enforced in the call-site
     compilingFiles ++= sources
-    logger.info(compilationMsgFor(project.name, sources))
+    logger.info(Reporter.compilationMsgFor(project.name, sources))
   }
 
   override def reportEndIncrementalCycle(durationMs: Long, result: scala.util.Try[Unit]): Unit = {
@@ -70,7 +70,8 @@ final class LogReporter(
   ): Unit = {
     code match {
       case bsp.StatusCode.Ok =>
-        val eligibleProblemsPerFile = groupProblemsByFile(previousSuccessfulProblems)
+        val eligibleProblemsPerFile = Reporter
+          .groupProblemsByFile(previousSuccessfulProblems)
           .filterKeys(f => !compilingFiles.contains(f))
           .valuesIterator
         val warningsFromPreviousRuns = eligibleProblemsPerFile

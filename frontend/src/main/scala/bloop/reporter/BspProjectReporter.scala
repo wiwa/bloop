@@ -81,7 +81,7 @@ final class BspProjectReporter(
   private var recentlyReportProblemsPerFile: Map[File, List[ProblemPerPhase]] = Map.empty
 
   override def reportStartCompilation(recentProblems: List[ProblemPerPhase]): Unit = {
-    recentlyReportProblemsPerFile = groupProblemsByFile(recentProblems)
+    recentlyReportProblemsPerFile = Reporter.groupProblemsByFile(recentProblems)
   }
 
   override def reportNextPhase(phase: String, sourceFile: File): Unit = {
@@ -119,7 +119,7 @@ final class BspProjectReporter(
   override def reportStartIncrementalCycle(sources: Seq[File], outputDirs: Seq[File]): Unit = {
     cycleCount += 1
     reportEndPreviousCycleThunk( /* is the last incremental cycle? */ false)(None)
-    val msg = compilationMsgFor(project.name, sources)
+    val msg = Reporter.compilationMsgFor(project.name, sources)
     bspLogger.publishCompilationStart(
       CompilationEvent.StartCompilation(project.name, project.bspUri, msg, taskId)
     )
@@ -227,7 +227,8 @@ final class BspProjectReporter(
       )
 
       // Note the analysis file only contains non-error problems
-      val problemsInPreviousAnalysisPerFile = groupProblemsByFile(previousSuccessfulProblems)
+      val problemsInPreviousAnalysisPerFile =
+        Reporter.groupProblemsByFile(previousSuccessfulProblems)
       recentlyReportProblemsPerFile.foreach {
         case (sourceFile, problemsPerFile) if reportAllPreviousProblems =>
           reportAllProblems(sourceFile, problemsPerFile)

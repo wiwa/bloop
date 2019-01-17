@@ -182,6 +182,9 @@ abstract class Reporter(
    *               bloop backend, where this method is used, should not depend on bsp4j.
    */
   def reportEndIncrementalCycle(durationMs: Long, result: Try[Unit]): Unit
+}
+
+object Reporter {
 
   /** Create a compilation message summarizing the compilation of `sources` in `projectName`. */
   def compilationMsgFor(projectName: String, sources: Seq[File]): String = {
@@ -193,6 +196,7 @@ abstract class Reporter(
     combined.mkString(s"Compiling $projectName (", " and ", ")")
   }
 
+  /** Groups problems per file where they originated. */
   def groupProblemsByFile(ps: List[ProblemPerPhase]): Map[File, List[ProblemPerPhase]] = {
     val problemsPerFile = mutable.HashMap[File, List[ProblemPerPhase]]()
     ps.foreach {
@@ -204,5 +208,4 @@ abstract class Reporter(
     }
     problemsPerFile.toMap
   }
-
 }
