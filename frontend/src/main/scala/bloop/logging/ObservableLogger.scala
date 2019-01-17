@@ -8,16 +8,14 @@ import monix.execution.Scheduler
  * by different clients. To subscribe to a client, you can use the [[subscribe]] method that
  * returns an `Observable[LoggerAction]`.
  */
-final class ObservableLogger[L <: Logger](
-    override val name: String,
+final class ObservableLogger[L <: Logger] private (
     underlying: L,
     scheduler: Scheduler
 ) extends Logger {
+  override val name: String = s"observable-${underlying.name}"
   override def isVerbose: Boolean = underlying.isVerbose
-  override def asDiscrete: Logger =
-    new ObservableLogger(name, underlying.asDiscrete, scheduler)
-  override def asVerbose: Logger =
-    new ObservableLogger(name, underlying.asVerbose, scheduler)
+  override def asDiscrete: Logger = new ObservableLogger(underlying.asDiscrete, scheduler)
+  override def asVerbose: Logger = new ObservableLogger(underlying.asVerbose, scheduler)
   override def ansiCodesSupported: Boolean = underlying.ansiCodesSupported
 
   override def debugFilter: DebugFilter = underlying.debugFilter
@@ -68,4 +66,7 @@ object ObservableLogger {
   final case class LogInfoMessage(msg: String) extends Action
   final case class LogDebugMessage(msg: String) extends Action
   final case class LogTraceMessage(msg: String) extends Action
+
+  def apply[L <: Logger](underlying: L, scheduler: Scheduler): ObservableLogger[L] =
+    new ObservableLogger(underlying, scheduler)
 }

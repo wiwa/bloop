@@ -5,9 +5,10 @@ import bloop.data.Project
 import bloop.engine._
 import bloop.engine.tasks.compilation.{FinalCompileResult, _}
 import bloop.io.AbsolutePath
-import bloop.logging.{BspServerLogger, DebugFilter, Logger}
+import bloop.logging.{BspServerLogger, DebugFilter, Logger, ObservableLogger}
 import bloop.reporter._
 import bloop.{CompileInputs, CompileMode, Compiler}
+
 import monix.eval.Task
 import sbt.internal.inc.AnalyzingCompiler
 
@@ -43,7 +44,8 @@ object CompileTask {
       cancelCompilation: Promise[Unit]
   ): Task[State] = {
     val cwd = state.build.origin.getParent
-    import state.{logger, compilerCache}
+    val logger = ObservableLogger(state.logger, bloop.engine.ExecutionContext.ioScheduler)
+
     def compile(graphInputs: CompileGraph.Inputs): Task[Compiler.Result] = {
       val project = graphInputs.bundle.project
       val classpath = graphInputs.bundle.classpath
@@ -95,7 +97,7 @@ object CompileTask {
             .map { scalacOptions =>
               CompileInputs(
                 instance,
-                compilerCache,
+                state.compilerCache,
                 sources.toArray,
                 classpath,
                 graphInputs.store,
