@@ -8,9 +8,10 @@ import bloop.data.Project
 import bloop.engine.tasks.compilation.CompileExceptions.BlockURI
 import bloop.util.Java8Compat.JavaCompletableFutureUtils
 import bloop.engine._
-import bloop.logging.{Logger, ObservableLogger}
+import bloop.logging.{Logger, ObservableLogger, LoggerAction}
 import bloop.{Compiler, CompilerOracle, JavaSignal, SimpleIRStore}
 import monix.eval.Task
+import monix.reactive.Observable
 import xsbti.compile.{EmptyIRStore, IR, IRStore, PreviousResult}
 
 import scala.util.{Failure, Success}
@@ -94,6 +95,7 @@ object CompileGraph {
 
   case class RunningCompilation(
       traversal: CompileTraversal,
+      //loggerMirror: Observable[LoggerAction]
       logger: ObservableLogger[Logger]
   )
 
@@ -125,8 +127,11 @@ object CompileGraph {
     setup(project, dag).flatMap { bundle =>
       val compileAndUnsubscribe = {
         compile(bundle).map { result =>
-          // Remove as ongoing compilation before returning result
+          // Remove as ongoing compilation before returning
           runningCompilations.remove(bundle.oracleInputs)
+          // Close observable logger streams
+          logger.completeObservable()
+          // Return compilation result after the book-keeping
           result
         }
       }.memoize // Without memoization, there is no deduplication
@@ -136,9 +141,14 @@ object CompileGraph {
         RunningCompilation(compileAndUnsubscribe, logger)
       )
 
-      // TODO(jvican): Modify this bit to return a logger to replay events
       if (ongoingCompilation == null) compileAndUnsubscribe
-      else ongoingCompilation.traversal
+      else {
+        // Replay events asynchronously to waiting for the compilation result
+        val replayEventsTask = ongoingCompilation.logger.mirror.foreachL(logger.replay(_))
+        Task.mapBoth(ongoingCompilation.traversal, replayEventsTask) {
+          case (result, _) => result
+        }
+      }
     }
   }
 

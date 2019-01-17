@@ -7,7 +7,7 @@ import bloop.cli.Commands
 import bloop.data.Project
 import bloop.io.AbsolutePath
 import bloop.logging.RecordingLogger
-import bloop.reporter.ReporterConfig
+import bloop.reporter.{ReporterConfig, ReporterInputs, LogReporter}
 import bloop.testing.{LoggingEventHandler, TestInternals, TestSuiteEvent}
 import bloop.util.TestUtil
 import bloop.engine.tasks.{CompileTask, Tasks, TestTask}
@@ -40,8 +40,9 @@ object JsTestSpec {
     val order = CompileMode.Sequential
     val cwd = state0.build.origin.getParent
     val format = ReporterConfig.defaultFormat
-    val createReporter = (project: Project, cwd: AbsolutePath) =>
-      CompileTask.toReporter(project, cwd, format, state0.logger)
+    val createReporter = (inputs: ReporterInputs) =>
+      new LogReporter(inputs.project, inputs.logger, inputs.cwd, identity, format)
+
     val dag = state0.build.getDagFor(project)
     val compileTask =
       CompileTask.compile(state0, dag, createReporter, order, false, false, Promise[Unit]())
@@ -191,8 +192,9 @@ class JsTestSpec(
     val classpathEntries = classpath.map(_.underlying.toUri.toURL)
     val testLoader = new URLClassLoader(classpathEntries, Some(TestInternals.filteredLoader).orNull)
     def frameworks(classLoader: ClassLoader): List[Framework] = {
-      testProject.testFrameworks.flatMap(f =>
-        TestInternals.loadFramework(classLoader, f.names, testState.logger))
+      testProject.testFrameworks.flatMap(
+        f => TestInternals.loadFramework(classLoader, f.names, testState.logger)
+      )
     }
 
     TestUtil.quietIfSuccess(testState.logger) { logger =>

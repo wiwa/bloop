@@ -61,7 +61,17 @@ final class BspServerLogger private (
     ()
   }
 
-  def diagnostic(event: BspServerEvent.Diagnostic): Unit = {
+  override def handleCompilationEvent(event: CompilationEvent): Unit = {
+    event match {
+      case e: CompilationEvent.StartCompilation => publishCompilationStart(e)
+      case e: CompilationEvent.ProgressCompilation => publishCompilationProgress(e)
+      case e: CompilationEvent.EndCompilation => publishCompilationEnd(e)
+      case e: CompilationEvent.Diagnostic => diagnostic(e)
+      case e: CompilationEvent.NoDiagnostic => noDiagnostic(e)
+    }
+  }
+
+  def diagnostic(event: CompilationEvent.Diagnostic): Unit = {
     import sbt.util.InterfaceUtil.toOption
     val message = event.problem.message
     val problemPos = event.problem.position
@@ -110,7 +120,7 @@ final class BspServerLogger private (
     ()
   }
 
-  def noDiagnostic(event: BspServerEvent.NoDiagnostic): Unit = {
+  def noDiagnostic(event: CompilationEvent.NoDiagnostic): Unit = {
     val uri = bsp.Uri(event.file.toPath.toUri)
     val textDocument = bsp.TextDocumentIdentifier(uri)
     val buildTargetId = bsp.BuildTargetIdentifier(event.projectUri)
@@ -128,7 +138,7 @@ final class BspServerLogger private (
 
   private def now: Long = System.currentTimeMillis()
 
-  def publishCompilationStart(event: BspServerEvent.StartCompilation): Unit = {
+  def publishCompilationStart(event: CompilationEvent.StartCompilation): Unit = {
     val json = bsp.CompileTask.encodeCompileTask(
       bsp.CompileTask(bsp.BuildTargetIdentifier(event.projectUri))
     )
@@ -154,7 +164,7 @@ final class BspServerLogger private (
     io.circe.derivation.deriveEncoder
 
   /** Publish a compile progress notification to the client via BSP every 5% progress increments. */
-  def publishCompilationProgress(event: BspServerEvent.ProgressCompilation): Unit = {
+  def publishCompilationProgress(event: CompilationEvent.ProgressCompilation): Unit = {
     val msg = s"Compiling ${event.projectName} (${event.percentage}%)"
     val json = bloopProgressEncoder(BloopProgress(bsp.BuildTargetIdentifier(event.projectUri)))
     Build.taskProgress.notify(
@@ -172,7 +182,7 @@ final class BspServerLogger private (
     ()
   }
 
-  def publishCompilationEnd(event: BspServerEvent.EndCompilation): Unit = {
+  def publishCompilationEnd(event: CompilationEvent.EndCompilation): Unit = {
     val errors = event.problems.count(_.severity == Severity.Error)
     val warnings = event.problems.count(_.severity == Severity.Warn)
     val json = bsp.CompileReport.encodeCompileReport(

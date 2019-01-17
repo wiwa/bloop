@@ -7,7 +7,7 @@ import bloop.cli.CommonOptions
 import bloop.data.Project
 import bloop.exec.{Forker, JavaEnv}
 import bloop.io.AbsolutePath
-import bloop.reporter.ReporterConfig
+import bloop.reporter.{ReporterConfig, ReporterInputs, LogReporter}
 import bloop.testing.{DiscoveredTestFrameworks, NoopEventHandler, TestInternals}
 import bloop.util.TestUtil
 import bloop.engine.tasks.{CompileTask, Tasks, TestTask}
@@ -36,8 +36,8 @@ object JvmTestSpec {
     val order = CompileMode.Sequential
     val cwd = state0.build.origin.getParent
     val format = ReporterConfig.defaultFormat
-    val createReporter = (project: Project, cwd: AbsolutePath) =>
-      CompileTask.toReporter(project, cwd, format, state0.logger)
+    val createReporter = (inputs: ReporterInputs) =>
+      new LogReporter(inputs.project, inputs.logger, inputs.cwd, identity, format)
     val dag = state0.build.getDagFor(project)
     val compileTask =
       CompileTask.compile(state0, dag, createReporter, order, false, false, Promise[Unit]())
@@ -97,8 +97,9 @@ class JvmTestSpec(
   }
 
   private def frameworks(classLoader: ClassLoader): List[Framework] = {
-    testProject.testFrameworks.flatMap(f =>
-      TestInternals.loadFramework(classLoader, f.names, testState.logger))
+    testProject.testFrameworks.flatMap(
+      f => TestInternals.loadFramework(classLoader, f.names, testState.logger)
+    )
   }
 
   @Test
@@ -125,7 +126,8 @@ class JvmTestSpec(
             Nil,
             NoopEventHandler,
             logger,
-            opts)
+            opts
+          )
         }
         Assert.assertTrue(s"The exit code is non-zero ${exitCode}", exitCode == 0)
       }
@@ -158,7 +160,8 @@ class JvmTestSpec(
             Nil,
             NoopEventHandler,
             logger,
-            opts)
+            opts
+          )
 
         val testsTask = for {
           _ <- createTestTask

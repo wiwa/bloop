@@ -37,7 +37,7 @@ object CompileTask {
   def compile(
       state: State,
       dag: Dag[Project],
-      createReporter: (Project, AbsolutePath) => Reporter,
+      createReporter: ReporterInputs => Reporter,
       userCompileMode: CompileMode.ConfigurableMode,
       pipeline: Boolean,
       excludeRoot: Boolean,
@@ -58,7 +58,7 @@ object CompileTask {
         case Right(CompileSourcesAndInstance(sources, instance, javaOnly)) =>
           val previousResult = state.results.latestResult(project)
           val previousSuccesful = state.results.lastSuccessfulResultOrEmpty(project)
-          val reporter = createReporter(project, cwd)
+          val reporter = createReporter(ReporterInputs(project, cwd, logger))
 
           // Warn user if detected missing dep, see https://github.com/scalacenter/bloop/issues/708
           state.build.hasMissingDependencies(project).foreach { missing =>
@@ -215,27 +215,6 @@ object CompileTask {
       }
     } finally {
       Files.delete(tmpDir)
-    }
-  }
-
-  def toReporter(
-      project: Project,
-      cwd: AbsolutePath,
-      config: ReporterConfig,
-      logger: Logger
-  ): Reporter = {
-    logger match {
-      case bspLogger: BspServerLogger =>
-        // Disable reverse order to show errors as they come for BSP clients
-        new BspProjectReporter(
-          project,
-          bspLogger,
-          cwd,
-          identity,
-          config.copy(reverseOrder = false),
-          false
-        )
-      case _ => new LogReporter(project, logger, cwd, identity, config)
     }
   }
 }

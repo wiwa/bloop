@@ -7,5 +7,5 @@ import bloop.io.AbsolutePath
 case class ReporterInputs(
     project: Project,
     cwd: AbsolutePath,
-    logger: ObservableLogger
+    logger: Logger
 )

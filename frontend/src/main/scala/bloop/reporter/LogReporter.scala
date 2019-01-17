@@ -65,31 +65,24 @@ final class LogReporter(
 
   override def reportStartCompilation(previousProblems: List[ProblemPerPhase]): Unit = ()
   override def reportEndCompilation(
-      previousAnalysis: Option[CompileAnalysis],
-      currentAnalysis: Option[CompileAnalysis],
+      previousSuccessfulProblems: List[ProblemPerPhase],
       code: bsp.StatusCode
   ): Unit = {
-    def warningsFromPreviousRuns(previous: CompileAnalysis): List[xsbti.Problem] = {
-      import scala.collection.JavaConverters._
-      val previousSourceInfos = previous.readSourceInfos().getAllSourceInfos.asScala.toMap
-      val eligibleSourceInfos =
-        previousSourceInfos.filterKeys(f => !compilingFiles.contains(f)).values
-      eligibleSourceInfos.flatMap { i =>
-        i.getReportedProblems.filter(_.severity() == xsbti.Severity.Warn)
-      }.toList
-    }
-
     code match {
       case bsp.StatusCode.Ok =>
-        // Report warnings that occurred in previous compilation cycles only if
-        previousAnalysis.foreach { previous =>
-          // Note that buffered warnings are not added back to the current analysis on purpose
-          warningsFromPreviousRuns(previous).foreach(p => log(p))
-        }
+        val eligibleProblemsPerFile = groupProblemsByFile(previousSuccessfulProblems)
+          .filterKeys(f => !compilingFiles.contains(f))
+          .valuesIterator
+        val warningsFromPreviousRuns = eligibleProblemsPerFile
+          .flatMap(_.filter(_.problem.severity() == xsbti.Severity.Warn))
+          .toList
+
+        // Note that buffered warnings are not added back to the current analysis on purpose
+        warningsFromPreviousRuns.foreach(p => log(p.problem))
       case _ => ()
     }
 
-    super.reportEndCompilation(previousAnalysis, currentAnalysis, code)
+    super.reportEndCompilation(previousSuccessfulProblems, code)
   }
 }
 

@@ -152,14 +152,13 @@ abstract class Reporter(
    *
    * This method **is** called if the compilation is a no-op.
    *
-   * @param previousAnalysis An instance of a previous compiler analysis, if any.
+   * @param previousProblems The problems reported in the previous compiler analysis.
    * @param analysis An instance of a new compiler analysis, if no error happened.
    * @param code The status code for a given compilation. The status code can be used whenever
    *             there is a noop compile and it's successful or cancelled.
    */
   def reportEndCompilation(
-      previousAnalysis: Option[CompileAnalysis],
-      analysis: Option[CompileAnalysis],
+      previousProblems: List[ProblemPerPhase],
       code: bsp.StatusCode
   ): Unit = {
     phasesAtFile.clear()
@@ -193,4 +192,17 @@ abstract class Reporter(
     val combined = scalaMsg ++ javaMsg
     combined.mkString(s"Compiling $projectName (", " and ", ")")
   }
+
+  def groupProblemsByFile(ps: List[ProblemPerPhase]): Map[File, List[ProblemPerPhase]] = {
+    val problemsPerFile = mutable.HashMap[File, List[ProblemPerPhase]]()
+    ps.foreach {
+      case pp @ ProblemPerPhase(p, phase) =>
+        InterfaceUtil.toOption(p.position().sourceFile).foreach { file =>
+          val newProblemsPerFile = pp :: problemsPerFile.getOrElse(file, Nil)
+          problemsPerFile.+=(file -> newProblemsPerFile)
+        }
+    }
+    problemsPerFile.toMap
+  }
+
 }
