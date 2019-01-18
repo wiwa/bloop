@@ -9,7 +9,7 @@ import bloop.logging.{ObservedLogger, Logger}
 
 final class ObservedReporter(
     val observedLogger: ObservedLogger[Logger],
-    underlying: Reporter
+    val underlying: Reporter
 ) extends ZincReporter {
   override def log(xproblem: xsbti.Problem): Unit = {
     underlying.log(xproblem)

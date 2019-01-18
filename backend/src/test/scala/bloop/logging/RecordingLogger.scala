@@ -12,7 +12,6 @@ final class RecordingLogger(
     val debugFilter: DebugFilter = DebugFilter.All
 ) extends Logger {
   private[this] val messages = new ConcurrentLinkedQueue[(String, String)]
-  val messagesCount = messages.size
 
   def clear(): Unit = messages.clear()
 

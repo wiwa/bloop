@@ -132,10 +132,11 @@ object CompileGraph {
   ): CompileTraversal = {
     setup(project, dag).flatMap { bundle =>
       val logger = bundle.logger
-      val reporter = bundle.reporter
+      var deduplicate: Boolean = true
       val ongoingCompilation = runningCompilations.computeIfAbsent(
         bundle.oracleInputs,
         (_: CompilerOracle.Inputs) => {
+          deduplicate = false
           val compileAndUnsubscribe = compile(bundle).map { result =>
             // Remove as ongoing compilation before returning
             runningCompilations.remove(bundle.oracleInputs)
@@ -149,8 +150,11 @@ object CompileGraph {
         }
       )
 
-      if (ongoingCompilation == null) ongoingCompilation.traversal
-      else {
+      if (!deduplicate) {
+        ongoingCompilation.traversal
+      } else {
+        val rawLogger = logger.underlying
+        val reporter = bundle.reporter.underlying
         // Replay events asynchronously to waiting for the compilation result
         val replayEventsTask = ongoingCompilation.mirror.foreachL {
           case Left(action) =>
@@ -173,13 +177,13 @@ object CompileGraph {
             }
           case Right(action) =>
             action match {
-              case LoggerAction.LogErrorMessage(msg) => logger.underlying.error(msg)
-              case LoggerAction.LogWarnMessage(msg) => logger.underlying.warn(msg)
-              case LoggerAction.LogInfoMessage(msg) => logger.underlying.info(msg)
+              case LoggerAction.LogErrorMessage(msg) => rawLogger.error(msg)
+              case LoggerAction.LogWarnMessage(msg) => rawLogger.warn(msg)
+              case LoggerAction.LogInfoMessage(msg) => rawLogger.info(msg)
               case LoggerAction.LogDebugMessage(msg) =>
-                logger.underlying.debug(msg)(DebugFilter.Compilation)
+                rawLogger.debug(msg)(DebugFilter.Compilation)
               case LoggerAction.LogTraceMessage(msg) =>
-                logger.underlying.debug(msg)(DebugFilter.Compilation)
+                rawLogger.debug(msg)(DebugFilter.Compilation)
             }
         }
 
