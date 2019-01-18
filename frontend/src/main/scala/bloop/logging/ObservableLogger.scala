@@ -1,6 +1,7 @@
 package bloop.logging
 
-import monix.reactive.{Observable, MulticastStrategy}
+import bloop.reporter.ReporterAction
+import monix.reactive.{Observer, Observable, MulticastStrategy}
 import monix.execution.Scheduler
 
 /**
@@ -10,36 +11,17 @@ import monix.execution.Scheduler
  */
 final class ObservableLogger[L <: Logger] private (
     val underlying: L,
-    scheduler: Scheduler
+    observer: Observer[Either[ReporterAction, LoggerAction]]
 ) extends Logger {
   override val name: String = s"observable-${underlying.name}"
   override def isVerbose: Boolean = underlying.isVerbose
-  override def asDiscrete: Logger = new ObservableLogger(underlying.asDiscrete, scheduler)
-  override def asVerbose: Logger = new ObservableLogger(underlying.asVerbose, scheduler)
+  override def asDiscrete: Logger = new ObservableLogger(underlying.asDiscrete, observer)
+  override def asVerbose: Logger = new ObservableLogger(underlying.asVerbose, observer)
   override def ansiCodesSupported: Boolean = underlying.ansiCodesSupported
 
   override def debugFilter: DebugFilter = underlying.debugFilter
   override def debug(msg: String)(implicit ctx: DebugFilter): Unit =
     if (debugFilter.isEnabledFor(ctx)) printDebug(msg)
-
-  private val (observer, observable) =
-    Observable.multicast[LoggerAction](MulticastStrategy.publish)(scheduler)
-
-  def completeObservable(): Unit = observer.onComplete()
-
-  /**
-   * Creates an observable that allows the client to replay all the events
-   * happened since the creation of this observable logger.
-   *
-   * The returned observable cannot be cancelled directly. The non-cancellation
-   * helps clients replay all events until the very end of the origin stream.
-   * This property is important in case of cancelled compilations, where we still want
-   * to replay all events because they may contain information/logs that would
-   * otherwise be lost and would confuse clients.
-   */
-  def mirror: Observable[LoggerAction] = {
-    observable //.uncancelable
-  }
 
   /**
    * Replay an action that was produced during a bloop execution by another
@@ -54,8 +36,8 @@ final class ObservableLogger[L <: Logger] private (
    */
   def replay(action: LoggerAction): Unit = {
     action match {
-      case LoggerAction.HandleCompilationEvent(event) =>
-        underlying.handleCompilationEvent(event)
+      //   case LoggerAction.HandleCompilationEvent(event) =>
+      //     underlying.handleCompilationEvent(event)
       case LoggerAction.LogErrorMessage(msg) => error(msg)
       case LoggerAction.LogWarnMessage(msg) => warn(msg)
       case LoggerAction.LogInfoMessage(msg) => info(msg)
@@ -72,30 +54,33 @@ final class ObservableLogger[L <: Logger] private (
 
   override private[logging] def printDebug(msg: String): Unit = {
     underlying.printDebug(msg)
-    observer.onNext(LoggerAction.LogDebugMessage(msg))
+    observer.onNext(Right(LoggerAction.LogDebugMessage(msg)))
     ()
   }
 
   override def error(msg: String): Unit = {
     underlying.error(msg)
-    observer.onNext(LoggerAction.LogErrorMessage(msg))
+    observer.onNext(Right(LoggerAction.LogErrorMessage(msg)))
     ()
   }
 
   override def warn(msg: String): Unit = {
     underlying.warn(msg)
-    observer.onNext(LoggerAction.LogWarnMessage(msg))
+    observer.onNext(Right(LoggerAction.LogWarnMessage(msg)))
     ()
   }
 
   override def info(msg: String): Unit = {
     underlying.info(msg)
-    observer.onNext(LoggerAction.LogInfoMessage(msg))
+    observer.onNext(Right(LoggerAction.LogInfoMessage(msg)))
     ()
   }
 }
 
 object ObservableLogger {
-  def apply[L <: Logger](underlying: L, scheduler: Scheduler): ObservableLogger[L] =
-    new ObservableLogger(underlying, scheduler)
+  def apply[L <: Logger](
+      underlying: L,
+      observer: Observer[Either[ReporterAction, LoggerAction]]
+  ): ObservableLogger[L] =
+    new ObservableLogger(underlying, observer)
 }

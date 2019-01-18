@@ -214,7 +214,7 @@ final class BloopBspServices(
     def compile(projects: List[Project]): Task[State] = {
       val cwd = state.build.origin.getParent
       val config = ReporterConfig.defaultFormat.copy(reverseOrder = false)
-      val createReporter = (inputs: ReporterInputs) => {
+      val createReporter = (inputs: ReporterInputs[BspServerLogger]) => {
         val btid = bsp.BuildTargetIdentifier(inputs.project.bspUri)
         val reportAllPreviousProblems = {
           compiledTargetsAtLeastOnce.putIfAbsent(btid, true) match {
@@ -225,7 +225,7 @@ final class BloopBspServices(
 
         new BspProjectReporter(
           inputs.project,
-          bspLogger,
+          inputs.logger,
           inputs.cwd,
           identity,
           config,
@@ -241,7 +241,8 @@ final class BloopBspServices(
         CompileMode.Sequential,
         pipeline,
         false,
-        cancelCompilation
+        cancelCompilation,
+        bspLogger
       )
     }
 

@@ -34,17 +34,17 @@ object CompileTask {
    *
    * @return The new state of Bloop after compilation.
    */
-  def compile(
+  def compile[UseSiteLogger <: Logger](
       state: State,
       dag: Dag[Project],
-      createReporter: ReporterInputs => Reporter,
+      createReporter: ReporterInputs[UseSiteLogger] => Reporter,
       userCompileMode: CompileMode.ConfigurableMode,
       pipeline: Boolean,
       excludeRoot: Boolean,
-      cancelCompilation: Promise[Unit]
+      cancelCompilation: Promise[Unit],
+      logger: UseSiteLogger
   ): Task[State] = {
     val cwd = state.build.origin.getParent
-    val logger = ObservableLogger(state.logger, bloop.engine.ExecutionContext.ioScheduler)
 
     def compile(graphInputs: CompileGraph.Inputs): Task[Compiler.Result] = {
       val project = graphInputs.bundle.project

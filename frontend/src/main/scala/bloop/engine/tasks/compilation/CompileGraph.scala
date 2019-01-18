@@ -8,10 +8,11 @@ import bloop.data.Project
 import bloop.engine.tasks.compilation.CompileExceptions.BlockURI
 import bloop.util.Java8Compat.JavaCompletableFutureUtils
 import bloop.engine._
+import bloop.reporter.ReporterAction
 import bloop.logging.{Logger, ObservableLogger, LoggerAction}
 import bloop.{Compiler, CompilerOracle, JavaSignal, SimpleIRStore}
 import monix.eval.Task
-import monix.reactive.Observable
+import monix.reactive.{Observable, MulticastStrategy}
 import xsbti.compile.{EmptyIRStore, IR, IRStore, PreviousResult}
 
 import scala.util.{Failure, Success}
@@ -44,7 +45,7 @@ object CompileGraph {
       setup: (Project, Dag[Project]) => Task[CompileBundle],
       compile: Inputs => Task[Compiler.Result],
       pipeline: Boolean,
-      logger: ObservableLogger[Logger]
+      logger: Logger
   ): CompileTraversal = {
     /* We use different traversals for normal and pipeline compilation because the
      * pipeline traversal has an small overhead (2-3%) for some projects. Check
@@ -95,8 +96,7 @@ object CompileGraph {
 
   case class RunningCompilation(
       traversal: CompileTraversal,
-      //loggerMirror: Observable[LoggerAction]
-      logger: ObservableLogger[Logger]
+      mirror: Observable[Either[ReporterAction, LoggerAction]]
   )
 
   type RunningCompilationsInAllClients =
@@ -113,38 +113,45 @@ object CompileGraph {
    * @param project The project we want to set up and compile.
    * @param setup The setup function that yields a bundle with unique oracle inputs.
    * @param compile The function that will compile the project.
-   * @param logger A logger that we can use to replay all events happened during compilation.
+   * @param logger ???
    * @return A task that may be created by `compile` or may be a reference to a previous task.
    */
   def setupAndDeduplicate(
       project: Project,
       dag: Dag[Project],
       setup: (Project, Dag[Project]) => Task[CompileBundle],
-      logger: ObservableLogger[Logger]
+      logger: Logger
   )(
       compile: CompileBundle => CompileTraversal
   ): CompileTraversal = {
     setup(project, dag).flatMap { bundle =>
-      val compileAndUnsubscribe = {
-        compile(bundle).map { result =>
-          // Remove as ongoing compilation before returning
-          runningCompilations.remove(bundle.oracleInputs)
-          // Close observable logger streams
-          logger.completeObservable()
-          // Return compilation result after the book-keeping
-          result
-        }
-      }.memoize // Without memoization, there is no deduplication
-
-      val ongoingCompilation = runningCompilations.putIfAbsent(
+      val ongoingCompilation = runningCompilations.computeIfAbsent(
         bundle.oracleInputs,
-        RunningCompilation(compileAndUnsubscribe, logger)
+        (_: CompilerOracle.Inputs) => {
+          // Create a multicast observable stream to allow multiple mirrors of loggers
+          val (observer, observable) = {
+            Observable.multicast[Either[ReporterAction, LoggerAction]](
+              MulticastStrategy.publish
+            )(ExecutionContext.ioScheduler)
+          }
+
+          val compileAndUnsubscribe = compile(bundle).map { result =>
+            // Remove as ongoing compilation before returning
+            runningCompilations.remove(bundle.oracleInputs)
+            // Complete the observable
+            observer.onComplete()
+            // Return compilation result after the book-keeping
+            result
+          }.memoize // Without memoization, there is no deduplication
+
+          RunningCompilation(compileAndUnsubscribe, observable)
+        }
       )
 
-      if (ongoingCompilation == null) compileAndUnsubscribe
+      if (ongoingCompilation == null) ongoingCompilation.traversal
       else {
         // Replay events asynchronously to waiting for the compilation result
-        val replayEventsTask = ongoingCompilation.logger.mirror.foreachL(logger.replay(_))
+        val replayEventsTask = Task(()) //ongoingCompilation.mirror.foreachL(logger.replay(_))
         Task.mapBoth(ongoingCompilation.traversal, replayEventsTask) {
           case (result, _) => result
         }
@@ -164,7 +171,7 @@ object CompileGraph {
       dag: Dag[Project],
       computeBundle: (Project, Dag[Project]) => Task[CompileBundle],
       compile: Inputs => Task[Compiler.Result],
-      logger: ObservableLogger[Logger]
+      logger: Logger
   ): CompileTraversal = {
     val tasks = new scala.collection.mutable.HashMap[Dag[Project], CompileTraversal]()
     def register(k: Dag[Project], v: CompileTraversal): CompileTraversal = { tasks.put(k, v); v }
@@ -262,7 +269,7 @@ object CompileGraph {
       dag: Dag[Project],
       computeBundle: (Project, Dag[Project]) => Task[CompileBundle],
       compile: Inputs => Task[Compiler.Result],
-      logger: ObservableLogger[Logger]
+      logger: Logger
   ): CompileTraversal = {
     val tasks = new scala.collection.mutable.HashMap[Dag[Project], CompileTraversal]()
     def register(k: Dag[Project], v: CompileTraversal): CompileTraversal = { tasks.put(k, v); v }

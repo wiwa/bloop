@@ -6,7 +6,7 @@ import bloop.cli._
 import bloop.cli.CliParsers.CommandsMessages
 import bloop.cli.completion.{Case, Mode}
 import bloop.io.{AbsolutePath, RelativePath, SourceWatcher}
-import bloop.logging.DebugFilter
+import bloop.logging.{DebugFilter, Logger}
 import bloop.testing.{LoggingEventHandler, TestInternals}
 import bloop.engine.tasks.{CompileTask, LinkTask, Tasks, TestTask}
 import bloop.cli.Commands.CompilingCommand
@@ -143,7 +143,7 @@ object Interpreter {
     val compileTask = state.flatMap { state =>
       val config = ReporterKind.toReporterConfig(cmd.reporter)
       val dag = getProjectsDag(projects, state)
-      val createReporter = (inputs: ReporterInputs) =>
+      val createReporter = (inputs: ReporterInputs[Logger]) =>
         new LogReporter(inputs.project, inputs.logger, inputs.cwd, identity, config)
       CompileTask.compile(
         state,
@@ -152,7 +152,8 @@ object Interpreter {
         compilerMode,
         cmd.pipeline,
         excludeRoot,
-        Promise[Unit]()
+        Promise[Unit](),
+        state.logger
       )
     }
 

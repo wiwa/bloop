@@ -158,7 +158,7 @@ abstract class Reporter(
    *             there is a noop compile and it's successful or cancelled.
    */
   def reportEndCompilation(
-      previousProblems: List[ProblemPerPhase],
+      previousSuccessfulProblems: List[ProblemPerPhase],
       code: bsp.StatusCode
   ): Unit = {
     phasesAtFile.clear()
