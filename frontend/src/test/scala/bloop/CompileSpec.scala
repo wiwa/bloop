@@ -795,6 +795,7 @@ class CompileSpec {
       val (firstCompilationState, secondCompilationState) =
         TestUtil.blockOnTask(compileConcurrently, 10)
 
+      println(logger.messagesCount)
       // Expect bloop to deduplicate the concurrent compilation of `user`
       TestUtil.assertNoDiff(
         s"""

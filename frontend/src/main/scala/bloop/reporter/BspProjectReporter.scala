@@ -17,15 +17,14 @@ import scala.util.Try
 
 final class BspProjectReporter(
     val project: Project,
-    override val logger: ObservedLogger[BspServerLogger],
-    override val cwd: AbsolutePath,
+    override val logger: BspServerLogger,
+    cwd: AbsolutePath,
     sourcePositionMapper: Position => Position,
-    override val config: ReporterConfig,
+    config: ReporterConfig,
     reportAllPreviousProblems: Boolean,
     override val _problems: mutable.Buffer[ProblemPerPhase] = mutable.ArrayBuffer.empty
 ) extends Reporter(logger, cwd, sourcePositionMapper, config, _problems) {
-  private val bspLogger = logger.underlying
-  private val taskId = bspLogger.nextTaskId
+  private val taskId = logger.nextTaskId
 
   /** A cycle count, initialized to 0 when it's a no-op. */
   private var cycleCount: Int = 0
@@ -40,13 +39,13 @@ final class BspProjectReporter(
   private val startedPhaseInFile = TrieMap.empty[String, Boolean]
 
   /** Log a problem in a thread-safe manner. */
-  override protected def logFull(problem: Problem): Unit = {
+  override private[reporter] def logFull(problem: Problem): Unit = {
     sbt.util.InterfaceUtil.toOption(problem.position.sourceFile()) match {
       case Some(file) =>
         // If it's the first diagnostic for this file, set clear to true
         val clear = clearedFilesForClient.putIfAbsent(file, true).isEmpty
-        bspLogger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, clear))
-      case None => bspLogger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, false))
+        logger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, clear))
+      case None => logger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, false))
     }
   }
 
@@ -61,7 +60,7 @@ final class BspProjectReporter(
     // We only report percentages every 5% increments
     val shouldReportPercentage = percentage % 5 == 0
     if (shouldReportPercentage) {
-      bspLogger.publishCompilationProgress(
+      logger.publishCompilationProgress(
         CompilationEvent.ProgressCompilation(
           project.name,
           project.bspUri,
@@ -72,24 +71,16 @@ final class BspProjectReporter(
         )
       )
     }
-
-    super.reportCompilationProgress(progress, total)
-  }
-
-  override def reportCancelledCompilation(): Unit = {
-    super.reportCancelledCompilation()
   }
 
   private var recentlyReportProblemsPerFile: Map[File, List[ProblemPerPhase]] = Map.empty
 
   override def reportStartCompilation(recentProblems: List[ProblemPerPhase]): Unit = {
     recentlyReportProblemsPerFile = Reporter.groupProblemsByFile(recentProblems)
-    super.reportStartCompilation(recentProblems)
   }
 
   override def reportNextPhase(phase: String, sourceFile: File): Unit = {
     super.reportNextPhase(phase, sourceFile)
-
     filesToPhaseStack.getOrElse(sourceFile, Nil) match {
       case Nil => ()
       case x :: Nil => ()
@@ -123,11 +114,10 @@ final class BspProjectReporter(
     cycleCount += 1
     reportEndPreviousCycleThunk( /* is the last incremental cycle? */ false)(None)
     val msg = Reporter.compilationMsgFor(project.name, sources)
-    bspLogger.publishCompilationStart(
+    logger.publishCompilationStart(
       CompilationEvent.StartCompilation(project.name, project.bspUri, msg, taskId)
     )
     sources.foreach(sourceFile => compilingFiles.+=(sourceFile -> true))
-    super.reportStartIncrementalCycle(sources, outputDirs)
   }
 
   private def clearProblemsAtPhase(
@@ -143,7 +133,7 @@ final class BspProjectReporter(
             else {
               val clear = clearedFilesForClient.putIfAbsent(source, true).isEmpty
               if (clear)
-                bspLogger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, source))
+                logger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, source))
               true // Always mark as processed if the phases coincide
             }
           case None => false
@@ -169,13 +159,13 @@ final class BspProjectReporter(
       case (sourceFile, problemsPerFile) =>
         if (!sourceFile.exists()) {
           // Clear diagnostics if file doesn't exist anymore
-          bspLogger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
+          logger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
         } else if (clearedFilesForClient.contains(sourceFile)) {
           // Ignore, if file has been cleared then > 0 diagnostics have been reported
           ()
         } else if (compilingFiles.contains(sourceFile)) {
           // Log no diagnostic if there was a problem in a file that now compiled without problems
-          bspLogger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
+          logger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
         } else {
           if (reportProblemsForTheFirstTime) {
             // Log all problems received from analysis; this is 1st compilation of this target
@@ -189,7 +179,7 @@ final class BspProjectReporter(
     problems.foreach {
       case ProblemPerPhase(problem, _) =>
         val clear = clearedFilesForClient.putIfAbsent(sourceFile, true).isEmpty
-        bspLogger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, clear))
+        logger.diagnostic(CompilationEvent.Diagnostic(project.bspUri, problem, clear))
     }
   }
 
@@ -206,7 +196,7 @@ final class BspProjectReporter(
         val statusCode = finalCompilationStatusCode.getOrElse(codeRightAfterCycle)
         if (!isLastCycle) reportRemainingProblems(false)
         else reportRemainingProblems(reportAllPreviousProblems)
-        bspLogger.publishCompilationEnd(
+        logger.publishCompilationEnd(
           CompilationEvent.EndCompilation(
             project.name,
             project.bspUri,
@@ -217,9 +207,9 @@ final class BspProjectReporter(
         )
       }
     }
-
-    super.reportEndIncrementalCycle(durationMs, result)
   }
+
+  override def reportCancelledCompilation(): Unit = ()
 
   override def reportEndCompilation(
       previousSuccessfulProblems: List[ProblemPerPhase],
@@ -228,7 +218,7 @@ final class BspProjectReporter(
     if (cycleCount == 0) {
       // When no-op, we keep reporting the start and the end of compilation for consistency
       val startMsg = s"Start no-op compilation for ${project.name}"
-      bspLogger.publishCompilationStart(
+      logger.publishCompilationStart(
         CompilationEvent.StartCompilation(project.name, project.bspUri, startMsg, taskId)
       )
 
@@ -249,18 +239,18 @@ final class BspProjectReporter(
                 problemsInPreviousAnalysis.foreach {
                   case ProblemPerPhase(problem, _) =>
                     val clear = clearedFilesForClient.putIfAbsent(sourceFile, true).isEmpty
-                    bspLogger.diagnostic(
+                    logger.diagnostic(
                       CompilationEvent.Diagnostic(project.bspUri, problem, clear)
                     )
                 }
               }
 
             case None =>
-              bspLogger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
+              logger.noDiagnostic(CompilationEvent.NoDiagnostic(project.bspUri, sourceFile))
           }
       }
 
-      bspLogger.publishCompilationEnd(
+      logger.publishCompilationEnd(
         CompilationEvent.EndCompilation(project.name, project.bspUri, taskId, allProblems, code)
       )
     } else {

@@ -9,7 +9,7 @@ import bloop.engine.tasks.compilation.CompileExceptions.BlockURI
 import bloop.util.Java8Compat.JavaCompletableFutureUtils
 import bloop.engine._
 import bloop.reporter.ReporterAction
-import bloop.logging.{Logger, ObservedLogger, LoggerAction}
+import bloop.logging.{Logger, ObservedLogger, LoggerAction, DebugFilter}
 import bloop.{Compiler, CompilerOracle, JavaSignal, SimpleIRStore}
 import monix.eval.Task
 import monix.reactive.{Observable, MulticastStrategy}
@@ -153,8 +153,34 @@ object CompileGraph {
       else {
         // Replay events asynchronously to waiting for the compilation result
         val replayEventsTask = ongoingCompilation.mirror.foreachL {
-          case Left(reporterAction) => reporter.replay(reporterAction)
-          case Right(loggerAction) => logger.replay(loggerAction)
+          case Left(action) =>
+            action match {
+              case a: ReporterAction.ReportStartCompilation =>
+                reporter.reportStartCompilation(a.previousProblems)
+              case a: ReporterAction.ReportStartIncrementalCycle =>
+                reporter.reportStartIncrementalCycle(a.sources, a.outputDirs)
+              case a: ReporterAction.ReportProblem => reporter.log(a.problem)
+              case a: ReporterAction.ReportNextPhase =>
+                reporter.reportNextPhase(a.phase, a.sourceFile)
+              case a: ReporterAction.ReportCompilationProgress =>
+                reporter.reportCompilationProgress(a.progress, a.total)
+              case a: ReporterAction.ReportEndIncrementalCycle =>
+                reporter.reportEndIncrementalCycle(a.durationMs, a.result)
+              case ReporterAction.ReportCancelledCompilation =>
+                reporter.reportCancelledCompilation()
+              case a: ReporterAction.ReportEndCompilation =>
+                reporter.reportEndCompilation(a.previousSuccessfulProblems, a.code)
+            }
+          case Right(action) =>
+            action match {
+              case LoggerAction.LogErrorMessage(msg) => logger.underlying.error(msg)
+              case LoggerAction.LogWarnMessage(msg) => logger.underlying.warn(msg)
+              case LoggerAction.LogInfoMessage(msg) => logger.underlying.info(msg)
+              case LoggerAction.LogDebugMessage(msg) =>
+                logger.underlying.debug(msg)(DebugFilter.Compilation)
+              case LoggerAction.LogTraceMessage(msg) =>
+                logger.underlying.debug(msg)(DebugFilter.Compilation)
+            }
         }
 
         Task.mapBoth(ongoingCompilation.traversal, replayEventsTask) {
