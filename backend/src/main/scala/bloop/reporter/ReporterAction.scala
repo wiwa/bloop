@@ -2,6 +2,7 @@ package bloop.reporter
 
 import java.io.File
 import scala.util.Try
+import ch.epfl.scala.bsp
 
 sealed trait ReporterAction
 object ReporterAction {
@@ -15,7 +16,7 @@ object ReporterAction {
   ) extends ReporterAction
 
   final case class ReportProblem(
-      problem: Problem
+      problem: xsbti.Problem
   ) extends ReporterAction
 
   final case class ReportNextPhase(
@@ -36,7 +37,7 @@ object ReporterAction {
   final case object ReportCancelledCompilation extends ReporterAction
 
   final case class ReportEndCompilation(
-      previousSuccessfulProblems: List[ProblemPerPhase]
+      previousSuccessfulProblems: List[ProblemPerPhase],
+      code: bsp.StatusCode
   ) extends ReporterAction
-
 }

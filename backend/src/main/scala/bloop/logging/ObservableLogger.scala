@@ -1,17 +1,16 @@
 package bloop.logging
 
 import bloop.reporter.ReporterAction
-import monix.reactive.{Observer, Observable, MulticastStrategy}
-import monix.execution.Scheduler
+import monix.reactive.Observer
 
 /**
  * Defines a logger that forwards any event to the underlying logger and that
  * can be subscribed to by different clients. To subscribe to a client, you can
  * use the [[subscribe]] method that returns an `Observable[LoggerAction]`.
  */
-final class ObservableLogger[L <: Logger] private (
-    val underlying: L,
-    observer: Observer[Either[ReporterAction, LoggerAction]]
+final class ObservableLogger[+UseSiteLogger <: Logger] private (
+    val underlying: UseSiteLogger,
+    val observer: Observer[Either[ReporterAction, LoggerAction]]
 ) extends Logger {
   override val name: String = s"observable-${underlying.name}"
   override def isVerbose: Boolean = underlying.isVerbose
@@ -24,20 +23,10 @@ final class ObservableLogger[L <: Logger] private (
     if (debugFilter.isEnabledFor(ctx)) printDebug(msg)
 
   /**
-   * Replay an action that was produced during a bloop execution by another
-   * logger.
-   *
-   * This method handles actions differently for BSP loggers and non-BSP
-   * loggers, such as the one we use in the CLI. In BSP loggers, replaying a
-   * compilation event translates into sending a BSP notification to the client
-   * whereas in a CLI logger it's not actionable -- a compilation event has
-   * already been translated to log messages by the reporter, so there's no
-   * need to handle it.
+   * Replay an action produced during a bloop execution by another logger.
    */
   def replay(action: LoggerAction): Unit = {
     action match {
-      //   case LoggerAction.HandleCompilationEvent(event) =>
-      //     underlying.handleCompilationEvent(event)
       case LoggerAction.LogErrorMessage(msg) => error(msg)
       case LoggerAction.LogWarnMessage(msg) => warn(msg)
       case LoggerAction.LogInfoMessage(msg) => info(msg)
@@ -48,6 +37,7 @@ final class ObservableLogger[L <: Logger] private (
 
   override def trace(t: Throwable): Unit = {
     underlying.trace(t)
+    // TODO(jvican): What to do with traces? Let's try to add logic to => String
     //observer.onNext(ObservableLogger.LogTraceMessage(msg))
     ()
   }
@@ -83,4 +73,9 @@ object ObservableLogger {
       observer: Observer[Either[ReporterAction, LoggerAction]]
   ): ObservableLogger[L] =
     new ObservableLogger(underlying, observer)
+
+  import monix.execution.Scheduler
+  def dummy(underlying: Logger, scheduler: Scheduler): ObservableLogger[Logger] = {
+    ObservableLogger(underlying, Observer.empty(scheduler))
+  }
 }

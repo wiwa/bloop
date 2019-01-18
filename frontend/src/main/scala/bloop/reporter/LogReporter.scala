@@ -3,7 +3,7 @@ import java.io.File
 
 import bloop.data.Project
 import bloop.io.AbsolutePath
-import bloop.logging.Logger
+import bloop.logging.{Logger, ObservableLogger}
 import xsbti.compile.CompileAnalysis
 import xsbti.{Position, Severity}
 import ch.epfl.scala.bsp
@@ -12,7 +12,7 @@ import scala.collection.mutable
 
 final class LogReporter(
     val project: Project,
-    override val logger: Logger,
+    override val logger: ObservableLogger[Logger],
     override val cwd: AbsolutePath,
     sourcePositionMapper: Position => Position,
     override val config: ReporterConfig,
@@ -45,10 +45,13 @@ final class LogReporter(
     }
   }
 
-  override def reportCompilationProgress(progress: Long, total: Long): Unit = ()
+  override def reportCompilationProgress(progress: Long, total: Long): Unit = {
+    super.reportCompilationProgress(progress, total)
+  }
 
   override def reportCancelledCompilation(): Unit = {
     logger.warn(s"Cancelling compilation of ${project.name}")
+    super.reportCancelledCompilation()
     ()
   }
 
@@ -57,13 +60,18 @@ final class LogReporter(
     require(sources.size > 0) // This is an invariant enforced in the call-site
     compilingFiles ++= sources
     logger.info(Reporter.compilationMsgFor(project.name, sources))
+    super.reportStartIncrementalCycle(sources, outputDirs)
   }
 
   override def reportEndIncrementalCycle(durationMs: Long, result: scala.util.Try[Unit]): Unit = {
     logger.info(s"Compiled ${project.name} (${durationMs}ms)")
+    super.reportEndIncrementalCycle(durationMs, result)
   }
 
-  override def reportStartCompilation(previousProblems: List[ProblemPerPhase]): Unit = ()
+  override def reportStartCompilation(previousProblems: List[ProblemPerPhase]): Unit = {
+    super.reportStartCompilation(previousProblems)
+  }
+
   override def reportEndCompilation(
       previousSuccessfulProblems: List[ProblemPerPhase],
       code: bsp.StatusCode
@@ -84,32 +92,5 @@ final class LogReporter(
     }
 
     super.reportEndCompilation(previousSuccessfulProblems, code)
-  }
-}
-
-object LogReporter {
-
-  /**
-   * Populates a reporter with the problems of the compile analysis.
-   *
-   * These problems are important to get diagnostics in bsp working correctly. These
-   * diagnostics require problems from previous compilations to be populated in a
-   * reporter that it's associated with a previous result.
-   *
-   * These problems will not be errors, but will be most likely infos and warnings
-   * because `ResultsCache` will only populate a reporter if the analysis read was
-   * a success.
-   */
-  def fromAnalysis(
-      project: Project,
-      analysis: CompileAnalysis,
-      cwd: AbsolutePath,
-      logger: Logger
-  ): Reporter = {
-    import scala.collection.JavaConverters._
-    val sourceInfos = analysis.readSourceInfos.getAllSourceInfos.asScala.toBuffer
-    val ps = sourceInfos.flatMap(_._2.getReportedProblems).map(Problem.fromZincProblem(_))
-    val pss = ps.map(p => ProblemPerPhase(p, None))
-    new LogReporter(project, logger, cwd, identity, ReporterConfig.defaultFormat, pss)
   }
 }

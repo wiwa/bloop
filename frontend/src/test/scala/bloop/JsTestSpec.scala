@@ -6,7 +6,7 @@ import java.util.concurrent.{ExecutionException, TimeUnit}
 import bloop.cli.Commands
 import bloop.data.Project
 import bloop.io.AbsolutePath
-import bloop.logging.RecordingLogger
+import bloop.logging.{RecordingLogger, Logger}
 import bloop.reporter.{ReporterConfig, ReporterInputs, LogReporter}
 import bloop.testing.{LoggingEventHandler, TestInternals, TestSuiteEvent}
 import bloop.util.TestUtil
@@ -40,12 +40,13 @@ object JsTestSpec {
     val order = CompileMode.Sequential
     val cwd = state0.build.origin.getParent
     val format = ReporterConfig.defaultFormat
-    val createReporter = (inputs: ReporterInputs) =>
+    val createReporter = (inputs: ReporterInputs[Logger]) =>
       new LogReporter(inputs.project, inputs.logger, inputs.cwd, identity, format)
 
+    val logger = state0.logger
     val dag = state0.build.getDagFor(project)
     val compileTask =
-      CompileTask.compile(state0, dag, createReporter, order, false, false, Promise[Unit]())
+      CompileTask.compile(state0, dag, createReporter, order, false, false, Promise[Unit](), logger)
     val state = Await.result(compileTask.runAsync(ExecutionContext.scheduler), Duration.Inf)
     val result = state.results.lastSuccessfulResultOrEmpty(project).analysis().toOption
     val analysis = result.getOrElse(sys.error(s"$target lacks analysis after compilation!?"))

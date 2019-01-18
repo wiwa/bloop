@@ -17,14 +17,14 @@ import scala.util.Try
 
 final class BspProjectReporter(
     val project: Project,
-    override val logger: BspServerLogger,
+    override val logger: ObservableLogger[BspServerLogger],
     override val cwd: AbsolutePath,
     sourcePositionMapper: Position => Position,
     override val config: ReporterConfig,
     reportAllPreviousProblems: Boolean,
     override val _problems: mutable.Buffer[ProblemPerPhase] = mutable.ArrayBuffer.empty
 ) extends Reporter(logger, cwd, sourcePositionMapper, config, _problems) {
-  private val bspLogger = logger
+  private val bspLogger = logger.underlying
   private val taskId = bspLogger.nextTaskId
 
   /** A cycle count, initialized to 0 when it's a no-op. */
@@ -72,16 +72,19 @@ final class BspProjectReporter(
         )
       )
     }
+
+    super.reportCompilationProgress(progress, total)
   }
 
   override def reportCancelledCompilation(): Unit = {
-    ()
+    super.reportCancelledCompilation()
   }
 
   private var recentlyReportProblemsPerFile: Map[File, List[ProblemPerPhase]] = Map.empty
 
   override def reportStartCompilation(recentProblems: List[ProblemPerPhase]): Unit = {
     recentlyReportProblemsPerFile = Reporter.groupProblemsByFile(recentProblems)
+    super.reportStartCompilation(recentProblems)
   }
 
   override def reportNextPhase(phase: String, sourceFile: File): Unit = {
@@ -124,6 +127,7 @@ final class BspProjectReporter(
       CompilationEvent.StartCompilation(project.name, project.bspUri, msg, taskId)
     )
     sources.foreach(sourceFile => compilingFiles.+=(sourceFile -> true))
+    super.reportStartIncrementalCycle(sources, outputDirs)
   }
 
   private def clearProblemsAtPhase(
@@ -213,6 +217,8 @@ final class BspProjectReporter(
         )
       }
     }
+
+    super.reportEndIncrementalCycle(durationMs, result)
   }
 
   override def reportEndCompilation(

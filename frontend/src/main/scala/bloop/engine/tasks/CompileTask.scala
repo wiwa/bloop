@@ -5,11 +5,12 @@ import bloop.data.Project
 import bloop.engine._
 import bloop.engine.tasks.compilation.{FinalCompileResult, _}
 import bloop.io.AbsolutePath
-import bloop.logging.{BspServerLogger, DebugFilter, Logger, ObservableLogger}
-import bloop.reporter._
+import bloop.logging.{BspServerLogger, DebugFilter, Logger, ObservableLogger, LoggerAction}
+import bloop.reporter.{Reporter, ReporterAction, ReporterConfig, ReporterInputs, LogReporter}
 import bloop.{CompileInputs, CompileMode, Compiler}
 
 import monix.eval.Task
+import monix.reactive.{Observer, Observable, MulticastStrategy}
 import sbt.internal.inc.AnalyzingCompiler
 
 import scala.concurrent.Promise
@@ -42,14 +43,17 @@ object CompileTask {
       pipeline: Boolean,
       excludeRoot: Boolean,
       cancelCompilation: Promise[Unit],
-      logger: UseSiteLogger
+      rawLogger: UseSiteLogger
   ): Task[State] = {
     val cwd = state.build.origin.getParent
 
     def compile(graphInputs: CompileGraph.Inputs): Task[Compiler.Result] = {
-      val project = graphInputs.bundle.project
-      val classpath = graphInputs.bundle.classpath
-      graphInputs.bundle.toSourcesAndInstance match {
+      val bundle = graphInputs.bundle
+      val project = bundle.project
+      val logger = bundle.logger
+      val reporter = bundle.reporter
+      val classpath = bundle.classpath
+      bundle.toSourcesAndInstance match {
         case Left(earlyResult) =>
           val complete = CompileExceptions.CompletePromise(graphInputs.store)
           graphInputs.irPromise.completeExceptionally(complete)
@@ -58,7 +62,6 @@ object CompileTask {
         case Right(CompileSourcesAndInstance(sources, instance, javaOnly)) =>
           val previousResult = state.results.latestResult(project)
           val previousSuccesful = state.results.lastSuccessfulResultOrEmpty(project)
-          val reporter = createReporter(ReporterInputs(project, cwd, logger))
 
           // Warn user if detected missing dep, see https://github.com/scalacenter/bloop/issues/708
           state.build.hasMissingDependencies(project).foreach { missing =>
@@ -148,10 +151,20 @@ object CompileTask {
     }
 
     def setup(project: Project, dag: Dag[Project]): Task[CompileBundle] = {
-      CompileBundle.computeFrom(project, dag)
+
+      // Create a multicast observable stream to allow multiple mirrors of loggers
+      val (observer, observable) = {
+        Observable.multicast[Either[ReporterAction, LoggerAction]](
+          MulticastStrategy.publish
+        )(ExecutionContext.ioScheduler)
+      }
+
+      val logger = ObservableLogger(rawLogger, observer)
+      val reporter = createReporter(ReporterInputs(project, cwd, logger))
+      CompileBundle.computeFrom(project, dag, reporter, logger)
     }
 
-    CompileGraph.traverse(dag, setup(_, _), compile(_), pipeline, logger).flatMap { partialDag =>
+    CompileGraph.traverse(dag, setup(_, _), compile(_), pipeline).flatMap { partialDag =>
       val partialResults = Dag.dfs(partialDag)
       val finalResults = partialResults.map(r => PartialCompileResult.toFinalResult(r))
       Task.gatherUnordered(finalResults).map(_.flatten).map { results =>
@@ -166,14 +179,14 @@ object CompileTask {
           results.foreach {
             case FinalNormalCompileResult(bundle, Compiler.Result.Failed(_, Some(t), _), _) =>
               val project = bundle.project
-              logger.error(s"Unexpected error when compiling ${project.name}: '${t.getMessage}'")
+              rawLogger.error(s"Unexpected error when compiling ${project.name}: '${t.getMessage}'")
               // Make a better job here at reporting any throwable that happens during compilation
               t.printStackTrace()
-              logger.trace(t)
+              rawLogger.trace(t)
             case _ => () // Do nothing when the final compilation result is not an actual error
           }
 
-          failures.foreach(b => logger.error(s"'${b.project.name}' failed to compile."))
+          failures.foreach(b => rawLogger.error(s"'${b.project.name}' failed to compile."))
           newState.copy(status = ExitStatus.CompilationError)
         }
       }
@@ -202,11 +215,11 @@ object CompileTask {
 
       instances.foreach { i =>
         // Initialize a compiler so that we can reset the global state after a build compilation
-        val logger = state.logger
         val scalac = state.compilerCache.get(i).scalac().asInstanceOf[AnalyzingCompiler]
         val config = ReporterConfig.defaultFormat
         val cwd = state.commonOptions.workingPath
         val randomProjectFromDag = Dag.dfs(dag).head
+        val logger = ObservableLogger.dummy(state.logger, ExecutionContext.ioScheduler)
         val reporter = new LogReporter(randomProjectFromDag, logger, cwd, identity, config)
         val output = new sbt.internal.inc.ConcreteSingleOutput(tmpDir.toFile)
         val cached = scalac.newCachedCompiler(Array.empty[String], output, logger, reporter)

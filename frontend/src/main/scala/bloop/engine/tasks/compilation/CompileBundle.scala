@@ -2,10 +2,12 @@ package bloop.engine.tasks.compilation
 
 import bloop.data.Project
 import bloop.engine.Feedback
-import bloop.engine.Dag
+import bloop.engine.{Dag, ExecutionContext}
 import bloop.io.{AbsolutePath, Paths}
 import bloop.util.ByteHasher
 import bloop.{Compiler, CompilerOracle, ScalaInstance}
+import bloop.logging.{Logger, ObservableLogger}
+import bloop.reporter.Reporter
 import monix.eval.Task
 import sbt.internal.inc.bloop.ClasspathHashing
 import xsbti.compile.FileHash
@@ -37,7 +39,9 @@ final case class CompileBundle(
     classpath: Array[AbsolutePath],
     javaSources: List[AbsolutePath],
     scalaSources: List[AbsolutePath],
-    oracleInputs: CompilerOracle.Inputs
+    oracleInputs: CompilerOracle.Inputs,
+    reporter: Reporter,
+    logger: ObservableLogger[Logger]
 ) {
   val isJavaOnly: Boolean = scalaSources.isEmpty && !javaSources.isEmpty
 
@@ -79,7 +83,12 @@ case class CompileSourcesAndInstance(
 )
 
 object CompileBundle {
-  def computeFrom(project: Project, dag: Dag[Project]): Task[CompileBundle] = {
+  def computeFrom(
+      project: Project,
+      dag: Dag[Project],
+      reporter: Reporter,
+      logger: ObservableLogger[Logger]
+  ): Task[CompileBundle] = {
     def hashSources(sources: List[AbsolutePath]): Task[List[CompilerOracle.HashedSource]] = {
       Task.gather {
         sources.map { source =>
@@ -103,7 +112,7 @@ object CompileBundle {
       val originPath = project.origin.path.syntax
       val originHash = project.origin.hash
       val inputs = CompilerOracle.Inputs(sourceHashes, classpathHashes, originPath, originHash)
-      new CompileBundle(project, classpath, javaSources, scalaSources, inputs)
+      new CompileBundle(project, classpath, javaSources, scalaSources, inputs, reporter, logger)
     }
   }
 }

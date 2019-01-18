@@ -44,14 +44,13 @@ object CompileGraph {
       dag: Dag[Project],
       setup: (Project, Dag[Project]) => Task[CompileBundle],
       compile: Inputs => Task[Compiler.Result],
-      pipeline: Boolean,
-      logger: Logger
+      pipeline: Boolean
   ): CompileTraversal = {
     /* We use different traversals for normal and pipeline compilation because the
      * pipeline traversal has an small overhead (2-3%) for some projects. Check
      * https://benchs.scala-lang.org/dashboard/snapshot/sLrZTBfntTxMWiXJPtIa4DIrmT0QebYF */
-    if (pipeline) pipelineTraversal(dag, setup, compile, logger)
-    else normalTraversal(dag, setup, compile, logger)
+    if (pipeline) pipelineTraversal(dag, setup, compile)
+    else normalTraversal(dag, setup, compile)
   }
 
   private final val JavaContinue = Task.now(JavaSignal.ContinueCompilation)
@@ -119,8 +118,7 @@ object CompileGraph {
   def setupAndDeduplicate(
       project: Project,
       dag: Dag[Project],
-      setup: (Project, Dag[Project]) => Task[CompileBundle],
-      logger: Logger
+      setup: (Project, Dag[Project]) => Task[CompileBundle]
   )(
       compile: CompileBundle => CompileTraversal
   ): CompileTraversal = {
@@ -151,7 +149,11 @@ object CompileGraph {
       if (ongoingCompilation == null) ongoingCompilation.traversal
       else {
         // Replay events asynchronously to waiting for the compilation result
-        val replayEventsTask = Task(()) //ongoingCompilation.mirror.foreachL(logger.replay(_))
+        val replayEventsTask = ongoingCompilation.mirror.foreachL {
+          case Left(reporterAction) => ???
+          case Right(loggerAction) => bundle.logger.replay(loggerAction)
+        }
+
         Task.mapBoth(ongoingCompilation.traversal, replayEventsTask) {
           case (result, _) => result
         }
@@ -170,8 +172,7 @@ object CompileGraph {
   private def normalTraversal(
       dag: Dag[Project],
       computeBundle: (Project, Dag[Project]) => Task[CompileBundle],
-      compile: Inputs => Task[Compiler.Result],
-      logger: Logger
+      compile: Inputs => Task[Compiler.Result]
   ): CompileTraversal = {
     val tasks = new scala.collection.mutable.HashMap[Dag[Project], CompileTraversal]()
     def register(k: Dag[Project], v: CompileTraversal): CompileTraversal = { tasks.put(k, v); v }
@@ -193,7 +194,7 @@ object CompileGraph {
         case None =>
           val task: Task[Dag[PartialCompileResult]] = dag match {
             case Leaf(project) =>
-              setupAndDeduplicate(project, dag, computeBundle, logger) { bundle =>
+              setupAndDeduplicate(project, dag, computeBundle) { bundle =>
                 val cf = new CompletableFuture[IRs]()
                 compile(Inputs(bundle, es, cf, JavaCompleted, JavaContinue, emptyOracle, false))
                   .map {
@@ -210,7 +211,7 @@ object CompileGraph {
               }
 
             case Parent(project, dependencies) =>
-              setupAndDeduplicate(project, dag, computeBundle, logger) { bundle =>
+              setupAndDeduplicate(project, dag, computeBundle) { bundle =>
                 val downstream = dependencies.map(loop)
                 Task.gatherUnordered(downstream).flatMap { dagResults =>
                   val failed = dagResults.flatMap(dag => blockedBy(dag).toList)
@@ -268,8 +269,7 @@ object CompileGraph {
   private def pipelineTraversal(
       dag: Dag[Project],
       computeBundle: (Project, Dag[Project]) => Task[CompileBundle],
-      compile: Inputs => Task[Compiler.Result],
-      logger: Logger
+      compile: Inputs => Task[Compiler.Result]
   ): CompileTraversal = {
     val tasks = new scala.collection.mutable.HashMap[Dag[Project], CompileTraversal]()
     def register(k: Dag[Project], v: CompileTraversal): CompileTraversal = { tasks.put(k, v); v }
@@ -282,7 +282,7 @@ object CompileGraph {
           val task = dag match {
             case Leaf(project) =>
               Task.now(new CompletableFuture[IRs]()).flatMap { cf =>
-                setupAndDeduplicate(project, dag, computeBundle, logger) { bundle =>
+                setupAndDeduplicate(project, dag, computeBundle) { bundle =>
                   val jcf = new CompletableFuture[Unit]()
                   val t = compile(Inputs(bundle, es, cf, jcf, JavaContinue, emptyOracle, true))
                   val running =
@@ -313,7 +313,7 @@ object CompileGraph {
               }
 
             case Parent(project, dependencies) =>
-              setupAndDeduplicate(project, dag, computeBundle, logger) { bundle =>
+              setupAndDeduplicate(project, dag, computeBundle) { bundle =>
                 val downstream = dependencies.map(loop)
                 Task.gatherUnordered(downstream).flatMap { dagResults =>
                   val failed = dagResults.flatMap(dag => blockedBy(dag).toList)

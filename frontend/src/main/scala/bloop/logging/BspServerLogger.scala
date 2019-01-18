@@ -61,16 +61,6 @@ final class BspServerLogger private (
     ()
   }
 
-  override def handleCompilationEvent(event: CompilationEvent): Unit = {
-    event match {
-      case e: CompilationEvent.StartCompilation => publishCompilationStart(e)
-      case e: CompilationEvent.ProgressCompilation => publishCompilationProgress(e)
-      case e: CompilationEvent.EndCompilation => publishCompilationEnd(e)
-      case e: CompilationEvent.Diagnostic => diagnostic(e)
-      case e: CompilationEvent.NoDiagnostic => noDiagnostic(e)
-    }
-  }
-
   def diagnostic(event: CompilationEvent.Diagnostic): Unit = {
     import sbt.util.InterfaceUtil.toOption
     val message = event.problem.message
