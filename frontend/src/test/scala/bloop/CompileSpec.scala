@@ -775,6 +775,8 @@ class CompileSpec {
 
   @Test
   def deduplicateCompilation(): Unit = {
+    import scala.concurrent.Await
+    import bloop.engine.ExecutionContext
     val logger = new RecordingLogger
     val scalaJars = TestUtil.scalaInstance.allJars.map(AbsolutePath.apply)
     testSlowBuild(logger) { state =>
@@ -788,16 +790,19 @@ class CompileSpec {
       val logger1 = new RecordingLogger
       val logger2 = new RecordingLogger
       val compileUserProject = Run(Commands.Compile(List("user")))
-      val firstCompilation =
-        TestUtil.interpreterTask(compileUserProject, compiledMacrosState.copy(logger = logger1))
+      val firstCompilation = TestUtil
+        .interpreterTask(compileUserProject, compiledMacrosState.copy(logger = logger1))
+        .runAsync(ExecutionContext.scheduler)
       val secondCompilation = TestUtil
         .interpreterTask(compileUserProject, compiledMacrosState.copy(logger = logger2))
         .delayExecution(FiniteDuration(2, TimeUnit.SECONDS))
+        .runAsync(ExecutionContext.scheduler)
 
-      val compileConcurrently = firstCompilation.zip(secondCompilation)
-      // Expect bloop to deduplicate the concurrent compilation of `user`
-      val (_, secondCompilationState) =
-        TestUtil.blockOnTask(compileConcurrently, 10)
+      val firstCompilationState =
+        Await.result(firstCompilation, FiniteDuration(10, TimeUnit.SECONDS))
+      // We make sure that the second compilation returns just after the first + ± delay
+      val secondCompilationState =
+        Await.result(secondCompilation, FiniteDuration(500, TimeUnit.MILLISECONDS))
 
       TestUtil.assertNoDiff(
         s"""
