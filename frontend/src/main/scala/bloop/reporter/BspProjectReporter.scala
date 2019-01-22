@@ -19,11 +19,10 @@ final class BspProjectReporter(
     val project: Project,
     override val logger: BspServerLogger,
     cwd: AbsolutePath,
-    sourcePositionMapper: Position => Position,
     config: ReporterConfig,
     reportAllPreviousProblems: Boolean,
     override val _problems: mutable.Buffer[ProblemPerPhase] = mutable.ArrayBuffer.empty
-) extends Reporter(logger, cwd, sourcePositionMapper, config, _problems) {
+) extends Reporter(logger, cwd, config, _problems) {
   private val taskId = logger.nextTaskId
 
   /** A cycle count, initialized to 0 when it's a no-op. */

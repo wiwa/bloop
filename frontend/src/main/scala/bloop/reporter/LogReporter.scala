@@ -14,10 +14,9 @@ final class LogReporter(
     val project: Project,
     override val logger: Logger,
     cwd: AbsolutePath,
-    sourcePositionMapper: Position => Position,
     config: ReporterConfig,
     override val _problems: mutable.Buffer[ProblemPerPhase] = mutable.ArrayBuffer.empty
-) extends Reporter(logger, cwd, sourcePositionMapper, config, _problems) {
+) extends Reporter(logger, cwd, config, _problems) {
 
   // Contains the files that are compiled in all incremental compiler cycles
   private val compilingFiles = mutable.HashSet[File]()

@@ -22,13 +22,11 @@ import scala.util.Try
  *
  * @param logger The logger that will receive the output of the reporter.
  * @param cwd    The current working directory of the user who started compilation.
- * @param sourcePositionMapper A function that transforms positions.
  * @param config The configuration for this reporter.
  */
 abstract class Reporter(
     val logger: Logger,
     override val cwd: AbsolutePath,
-    val sourcePositionMapper: Position => Position,
     override val config: ReporterConfig,
     val _problems: mutable.Buffer[ProblemPerPhase] = mutable.ArrayBuffer.empty
 ) extends ZincReporter {
@@ -59,7 +57,7 @@ abstract class Reporter(
     p match {
       case p: Problem => p
       case _ =>
-        val mappedPos = sourcePositionMapper(p.position)
+        val mappedPos = p.position
         val problemID = if (p.position.sourceFile.isPresent) nextID() else -1
         Problem(problemID, p.severity, p.message, mappedPos, p.category)
     }

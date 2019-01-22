@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 import bloop.cli.{Commands, ExitStatus}
 import bloop.config.Config
 import bloop.logging.{Logger, RecordingLogger}
-import bloop.util.{TestProject, TestUtil}
+import bloop.util.{TestProject, TestUtil, BuildUtil}
 import bloop.util.TestUtil.{
   RootProject,
   checkAfterCleanCompilation,
@@ -694,54 +694,13 @@ class CompileSpec {
     }
   }
 
-  def testSlowBuild(logger: RecordingLogger)(testLogic: State => Unit): Unit = {
-    object Sources {
-      val `SleepMacro.scala` =
-        """
-          |package macros
-          |
-          |import scala.reflect.macros.blackbox.Context
-          |import scala.language.experimental.macros
-          |
-          |object SleepMacro {
-          |  def sleep(): Unit = macro sleepImpl
-          |  def sleepImpl(c: Context)(): c.Expr[Unit] = {
-          |    import c.universe._
-          |    // Sleep for 3 seconds to give time to cancel compilation
-          |    Thread.sleep(3000)
-          |    reify { () }
-          |  }
-          |}
-          |
-        """.stripMargin
-      val `User.scala` =
-        """
-          |package user
-          |
-          |object User extends App {
-          |  macros.SleepMacro.sleep()
-          |}
-        """.stripMargin
-    }
-
-    val deps = Map("user" -> Set("macros"))
-    val structure = Map(
-      "macros" -> Map("SleepMacro.scala" -> Sources.`SleepMacro.scala`),
-      "user" -> Map("User.scala" -> Sources.`User.scala`)
-    )
-
-    val scalaJars = TestUtil.scalaInstance.allJars.map(AbsolutePath.apply)
-    TestUtil.testState(structure, deps, userLogger = Some(logger), extraJars = scalaJars) { state =>
-      testLogic(state)
-    }
-  }
-
   @Test
   def cancelCompilation(): Unit = {
     import bloop.engine.ExecutionContext
     val logger = new RecordingLogger
     val scalaJars = TestUtil.scalaInstance.allJars.map(AbsolutePath.apply)
-    testSlowBuild(logger) { state =>
+    BuildUtil.testSlowBuild(logger) { build =>
+      val state = build.state
       val compileMacroProject = Run(Commands.Compile(List("macros")))
       val compiledMacrosState = TestUtil.blockingExecute(compileMacroProject, state)
       Assert.assertTrue(
@@ -779,7 +738,8 @@ class CompileSpec {
     import bloop.engine.ExecutionContext
     val logger = new RecordingLogger
     val scalaJars = TestUtil.scalaInstance.allJars.map(AbsolutePath.apply)
-    testSlowBuild(logger) { state =>
+    BuildUtil.testSlowBuild(logger) { build =>
+      val state = build.state
       val compileMacroProject = Run(Commands.Compile(List("macros")))
       val compiledMacrosState = TestUtil.blockingExecute(compileMacroProject, state)
       Assert.assertTrue(

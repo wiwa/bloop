@@ -227,7 +227,6 @@ final class BloopBspServices(
           inputs.project,
           inputs.logger,
           inputs.cwd,
-          identity,
           config,
           reportAllPreviousProblems
         )

@@ -229,7 +229,7 @@ object CompileTask {
         val cwd = state.commonOptions.workingPath
         val randomProjectFromDag = Dag.dfs(dag).head
         val logger = ObservedLogger.dummy(state.logger, ExecutionContext.ioScheduler)
-        val reporter = new LogReporter(randomProjectFromDag, logger, cwd, identity, config)
+        val reporter = new LogReporter(randomProjectFromDag, logger, cwd, config)
         val output = new sbt.internal.inc.ConcreteSingleOutput(tmpDir.toFile)
         val cached = scalac.newCachedCompiler(Array.empty[String], output, logger, reporter)
         // Reset the global ir caches on the cached compiler only for the store IRs
