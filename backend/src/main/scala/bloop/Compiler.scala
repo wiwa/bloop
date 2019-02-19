@@ -4,6 +4,7 @@ import xsbti.compile._
 import xsbti.T2
 import java.util.Optional
 import java.io.File
+import java.util.concurrent.Executor
 
 import bloop.internal.Ecosystem
 import bloop.io.AbsolutePath
@@ -18,6 +19,8 @@ import sbt.internal.inc.bloop.internal.StopPipelining
 import sbt.util.InterfaceUtil
 
 import scala.concurrent.Promise
+
+import monix.execution.Scheduler
 
 case class CompileInputs(
     scalaInstance: ScalaInstance,
@@ -38,7 +41,9 @@ case class CompileInputs(
     mode: CompileMode,
     dependentResults: Map[File, PreviousResult],
     cancelPromise: Promise[Unit],
-    tracer: BraveTracer
+    tracer: BraveTracer,
+    scheduler: Scheduler,
+    executor: Executor
 )
 
 object Compiler {
@@ -186,11 +191,26 @@ object Compiler {
     val reporter = compileInputs.reporter
     val logger = compileInputs.logger
 
+    import java.util.UUID
+    val newClassesDir =
+      compileInputs.classesDir.getParent.resolve(s"classes.new-${UUID.randomUUID}")
+    val copy = bloop.util.CopyProducts(
+      classesDir.toPath,
+      newClassesDir.underlying,
+      compileInputs.scheduler,
+      compileInputs.executor,
+      logger
+    )
+
+    val copyHandle = copy.runAsync(compileInputs.scheduler)
+
     def cancel(): Unit = {
       // Avoid illegal state exception if client cancellation promise is completed
       if (!compileInputs.cancelPromise.isCompleted) {
         compileInputs.cancelPromise.success(())
       }
+
+      copyHandle.cancel()
 
       // Always report the compilation of a project no matter if it's completed
       reporter.reportCancelledCompilation()
