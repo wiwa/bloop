@@ -1,23 +1,29 @@
 package bloop.dap
 
-import java.net.URI
+import java.net.{InetSocketAddress, URI}
 
 import bloop.ConnectionHandle
-import monix.eval.Task
 import monix.execution.Scheduler
 
-import scala.util.Success
+import scala.util.{Failure, Success}
 
-final object DebugAdapterServer {
-  def createAdapter()(implicit ioScheduler: Scheduler): URI = {
-    val server = createServer()
+object DebugAdapterServer {
+  def createAdapter(address: InetSocketAddress)(ioScheduler: Scheduler): Either[String, URI] = {
+    DebugAdapterFactory.create match {
+      case Failure(error) => Left(error.getMessage)
+      case Success(factory) =>
+        val server = createServer()
 
-    ioScheduler.executeAsync(() => server.serverSocket.accept())
+        ioScheduler.executeAsync { () =>
+          val adapter = factory.create(server, address)
+          adapter.run()
+        }
 
-    server.uri
+        Right(server.uri)
+    }
   }
 
   private def createServer(): ConnectionHandle = {
-    ConnectionHandle.tcp(backlog = 10) // TODO tune backlog?
+    ConnectionHandle.tcp(backlog = 1)
   }
 }

@@ -65,7 +65,7 @@ final case class Forker(javaEnv: JavaEnv, classpath: Array[AbsolutePath]) {
       extraClasspath: Array[AbsolutePath] = Array.empty
   ): Task[Int] = {
     val (userJvmOptions, userArgs) =
-      if (skipJargs) (Array.empty, args0) else args0.partition(_.startsWith("-J"))
+      if (skipJargs) (Array.empty[String], args0) else args0.partition(_.startsWith("-J"))
     val jvmOptions = userJvmOptions.map(_.stripPrefix("-J")) ++ javaEnv.javaOptions
 
     val fullClasspath = (classpath ++ extraClasspath).map(_.syntax).mkString(pathSeparator)
