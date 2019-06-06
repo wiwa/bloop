@@ -2,27 +2,44 @@ package bloop.dap
 
 import java.net.{Socket, URI}
 
-import com.microsoft.java.debug.core.protocol.{Requests, Types}
+import com.microsoft.java.debug.core.protocol.Events
+import com.microsoft.java.debug.core.protocol.Events.DebugEvent
+import com.microsoft.java.debug.core.protocol.Requests._
+import com.microsoft.java.debug.core.protocol.Responses._
+import com.microsoft.java.debug.core.protocol.Types.Capabilities
 import monix.eval.Task
 import monix.execution.Scheduler
 
-final class DebugClient(implicit proxy: DebugAdapterProxy) {
-  def initialize(): Task[Types.Capabilities] = {
-    val arguments = new Requests.InitializeArguments()
-    proxy.initialize(arguments)
+import scala.reflect.ClassTag
+
+final class DebugClient(implicit proxy: Proxy) {
+  def initialize(): Task[Capabilities] = {
+    val arguments = new InitializeArguments()
+    DAP.Initialize(arguments)
   }
 
   def configurationDone(): Task[Unit] = {
-    proxy.configurationDone()
+    DAP.ConfigurationDone(())
   }
 
   def launch(): Task[Unit] = {
-    proxy.launch()
+    DAP.Launch(new LaunchArguments)
   }
 
   def disconnect(): Task[Unit] = {
-    val arguments = new Requests.DisconnectArguments
-    proxy.disconnect(arguments)
+    val arguments = new DisconnectArguments
+    DAP.Disconnect(arguments)
+  }
+
+  def exited: Task[Events.ExitedEvent] =
+    DAP.Exited.first
+
+  def terminated: Task[Events.TerminatedEvent] = {
+    DAP.Terminated.first
+  }
+
+  def output(): Task[String] = {
+    DAP.OutputEvent.all.foldLeftL(new StringBuilder)(_.append(_)).map(_.toString())
   }
 }
 
@@ -30,8 +47,8 @@ object DebugClient {
   def apply(uri: URI)(scheduler: Scheduler): DebugClient = {
     val socket = new Socket(uri.getHost, uri.getPort)
 
-    val proxy = new DebugAdapterProxy(socket.getInputStream, socket.getOutputStream)
-    Task(proxy.run()).runAsync(scheduler)
+    val proxy = Proxy.apply(socket)
+    proxy.listen(scheduler)
 
     new DebugClient()(proxy)
   }

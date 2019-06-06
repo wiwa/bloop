@@ -3,43 +3,65 @@ package bloop.dap
 import java.io.{InputStream, OutputStream}
 import java.net.{InetSocketAddress, Socket}
 
-import bloop.dap.DebugAdapter.Identity
+import bloop.dap.DebugAdapter.Adapter
 import com.microsoft.java.debug.core.adapter.{IProviderContext, ProtocolServer}
 import com.microsoft.java.debug.core.protocol.JsonUtils
-import com.microsoft.java.debug.core.protocol.Messages.Request
+import com.microsoft.java.debug.core.protocol.Messages.{Request, Response}
 import com.microsoft.java.debug.core.protocol.Requests.Command._
 import com.microsoft.java.debug.core.protocol.Requests.{AttachArguments, Command}
 
-final class DebugAdapter(adapters: Map[String, Request => Request])(
+import scala.collection.mutable
+
+final class DebugAdapter(adapters: Map[Command, Adapter])(
     in: InputStream,
     out: OutputStream,
     ctx: IProviderContext
 ) extends ProtocolServer(in, out, ctx) {
+  private val requests = mutable.Map.empty[Int, Adapter]
+
   override def dispatchRequest(request: Request): Unit = {
-    val command = request.command
-    val handler = adapters.getOrElse(command, Identity).andThen(super.dispatchRequest)
-    handler.apply(request)
+    println(request.command)
+    val command = Command.valueOf(request.command.toUpperCase())
+    adapters.get(command) match {
+      case Some(adapter) =>
+        requests += (request.seq -> adapter)
+        super.dispatchRequest(adapter.adapt(request))
+      case None =>
+        super.dispatchRequest(request)
+    }
+  }
+
+  override def sendResponse(response: Response): Unit = {
+    println("Sending response : " + response.command)
+    val foo = requests.remove(response.request_seq) match {
+      case Some(adapter) =>
+        super.sendResponse(adapter.adapt(response))
+        println("Adapted response : " + adapter.adapt(response))
+      case None => super.sendResponse(response)
+    }
   }
 }
 
 object DebugAdapter {
-  protected val Identity: Request => Request = x => x
-
   def apply(address: InetSocketAddress)(socket: Socket, ctx: IProviderContext): DebugAdapter = {
-    val adapterList = List(
+    val adapters = List[Adapter](
       new LaunchRequestAdapter(address)
-    )
+    ).map(adapter => (adapter.command, adapter))
 
-    val adapters = adapterList.map(adapter => adapter.targetedCommand.getName -> adapter).toMap
-    new DebugAdapter(adapters)(socket.getInputStream, socket.getOutputStream, ctx)
+    new DebugAdapter(adapters.toMap)(socket.getInputStream, socket.getOutputStream, ctx)
   }
 
   // TODO currently, adapted requests don't expect any response but a simple ACK.
   //  When adapting request which require actual response, this mechanism will have to be expanded
-  private abstract class Adapter(val targetedCommand: Command) extends (Request => Request)
+  protected sealed trait Adapter {
+    def command: Command
+    def adapt(request: Request): Request
+    def adapt(response: Response): Response
+  }
 
-  private final class LaunchRequestAdapter(address: InetSocketAddress) extends Adapter(LAUNCH) {
-    override def apply(request: Request): Request = {
+  private final class LaunchRequestAdapter(address: InetSocketAddress) extends Adapter {
+    val command = LAUNCH
+    override def adapt(request: Request): Request = {
       val arguments = new AttachArguments
       arguments.hostName = address.getHostName
       arguments.port = address.getPort
@@ -47,6 +69,11 @@ object DebugAdapter {
       val json = JsonUtils.toJsonTree(arguments, classOf[AttachArguments])
       val command = ATTACH.getName
       new Request(request.seq, command, json.getAsJsonObject)
+    }
+
+    override def adapt(response: Response): Response = {
+      response.command = command.getName
+      response
     }
   }
 }

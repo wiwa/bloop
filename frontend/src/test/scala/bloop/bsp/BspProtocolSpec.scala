@@ -45,11 +45,13 @@ class BspProtocolSpec(
       loadBspState(workspace, List(project), logger) { state =>
         val client = state.startDebugSession(project, "Main")
         val task = for {
-          capabilities <- client.initialize()
+          _ <- client.initialize()
           _ <- client.launch()
           _ <- client.configurationDone()
-          _ <- client.disconnect()
-        } yield capabilities
+          _ <- client.exited
+          output <- client.output()
+          _ = println(s">> $output")
+        } yield ()
 
         TestUtil.await(FiniteDuration(10, "s"))(task)
       }

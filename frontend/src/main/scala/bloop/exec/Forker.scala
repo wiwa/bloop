@@ -125,7 +125,7 @@ object Forker {
         Forker.EXIT_ERROR
       }
     } else {
-      var gobbleInput: Cancelable = null
+      var consumeInput: Cancelable = null
       final class ProcessHandler extends NuAbstractProcessHandler {
         override def onStart(nuProcess: NuProcess): Unit = {
           logger.debug(s"""Starting forked process:
@@ -141,7 +141,7 @@ object Forker {
         override def onStdout(buffer: ByteBuffer, closed: Boolean): Unit = {
           if (closed) {
             // Make sure that the gobbler never stays awake!
-            if (gobbleInput != null) gobbleInput.cancel()
+            if (consumeInput != null) consumeInput.cancel()
             logger.debug("The process is closed. Emptying buffer...")
             val remaining = outBuilder.mkString
             if (!remaining.isEmpty)
@@ -181,7 +181,7 @@ object Forker {
          * The input gobble runs on a 50ms basis and it can process a maximum of 4096
          * bytes at a time. The rest that is not read will be read in the next 50ms. */
         val duration = FiniteDuration(50, TimeUnit.MILLISECONDS)
-        gobbleInput = ExecutionContext.ioScheduler.scheduleWithFixedDelay(duration, duration) {
+        consumeInput = ExecutionContext.ioScheduler.scheduleWithFixedDelay(duration, duration) {
           val buffer = new Array[Byte](4096)
           if (!shutdownInput) {
             try {
@@ -198,7 +198,7 @@ object Forker {
                 throw t
             }
           } else {
-            if (gobbleInput != null) gobbleInput.cancel()
+            if (consumeInput != null) consumeInput.cancel()
           }
         }
 
@@ -209,11 +209,11 @@ object Forker {
             exitCode
           } finally {
             shutdownInput = true
-            gobbleInput.cancel()
+            consumeInput.cancel()
           }
         }.doOnCancel(Task {
           shutdownInput = true
-          gobbleInput.cancel()
+          consumeInput.cancel()
           try process.closeStdin(true)
           finally {
             process.destroy(false)
