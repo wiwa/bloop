@@ -9,7 +9,7 @@ import bloop.logging.RecordingLogger
 import bloop.util.TestUtil
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.{assertEquals, assertNotEquals}
 import org.junit.Test
@@ -42,6 +42,7 @@ class ForkerSpec {
   private def run(
       cwd: AbsolutePath,
       args: Array[String],
+      debug: Boolean = false,
       extraClasspath: Array[AbsolutePath] = Array.empty
   )(
       op: (Int, List[(String, String)]) => Unit
@@ -51,7 +52,7 @@ class ForkerSpec {
       val env = JdkConfig.default
       val classpath = project.fullClasspath(state.build.getDagFor(project), state.client)
       val config = JvmProcessForker(env, classpath)
-      val logger = new RecordingLogger()
+      val logger = new RecordingLogger(debug = debug)
       val opts = state.commonOptions.copy(env = TestUtil.runAndTestProperties)
       val mainClass = s"$packageName.$mainClassName"
       val wait = Duration.apply(25, TimeUnit.SECONDS)
@@ -129,13 +130,36 @@ class ForkerSpec {
 
   @Test
   def canHandleLongClasspaths(): Unit = TestUtil.withinWorkspace { tmp =>
-    val longCp = Array.fill(JvmProcessForker.classpathCharLimit / 10) {
+    val longCp = Array.fill(3000) {
       AbsolutePath(Files.createTempFile("forkerspec-temp", ".jar"))
     }
 
-    run(tmp, Array("foo", "bar", "baz"), longCp) {
+    val charLimitMsg =
+      s"""|Supplied command to fork exceeds character limit of 30000
+          |Creating a temporary MANIFEST jar for classpath entries
+          |""".stripMargin
+
+    val cleanupPrefix = "Cleaning up temporary MANIFEST jar: "
+
+    def isCleanupMessage(message: (String, String)): Boolean = message match {
+      case ("debug", msg) if msg.startsWith(cleanupPrefix) =>
+        true
+      case _ =>
+        false
+    }
+
+    run(tmp, Array("foo", "bar", "baz"), debug = true, longCp) {
       case (exitCode, messages) =>
         assertEquals(0, exitCode.toLong)
+        assert(messages.contains(("debug", charLimitMsg)))
+
+        val cleanupMessage = messages.filter(isCleanupMessage)
+        assertEquals(cleanupMessage.size, 1)
+
+        val tempManifestJar = Paths.get(cleanupMessage.head._2.stripPrefix(cleanupPrefix))
+        assert(tempManifestJar.isAbsolute)
+        assert(Files.notExists(tempManifestJar))
+
         assert(messages.contains(("info", "Arguments: foo, bar, baz")))
         assert(messages.contains(("error", "testing stderr")))
     }

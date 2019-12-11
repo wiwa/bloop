@@ -3,14 +3,13 @@ package bloop.exec
 import bloop.cli.CommonOptions
 import bloop.data.JdkConfig
 import bloop.engine.tasks.RunMode
-import bloop.io.{AbsolutePath, Paths, RelativePath}
+import bloop.io.{AbsolutePath, Bracket, Paths}
 import bloop.logging.{DebugFilter, Logger}
 import bloop.util.CrossPlatform
-import java.io.File
 import java.io.File.pathSeparator
 import java.net.URLClassLoader
 import java.nio.file.Files
-import java.util.jar.{Attributes, JarEntry, JarOutputStream, Manifest}
+import java.util.jar.{Attributes, JarOutputStream, Manifest}
 import monix.eval.Task
 import scala.util.{Failure, Success, Try}
 
@@ -72,9 +71,6 @@ trait JvmProcessForker {
 }
 
 object JvmProcessForker {
-  // Windows max cmd line length is 32767, which seems to be the least of the common shells.
-  val classpathCharLimit: Int = 30000
-
   def apply(config: JdkConfig, classpath: Array[AbsolutePath]): JvmProcessForker =
     new JvmForker(config, classpath)
 
@@ -116,18 +112,9 @@ final class JvmForker(config: JdkConfig, classpath: Array[AbsolutePath]) extends
       opts: CommonOptions,
       extraClasspath: Array[AbsolutePath]
   ): Task[Int] = {
-    val jvmOptions = jargs.map(_.stripPrefix("-J")) ++ config.javaOptions
-    val fullClasspath = classpath ++ extraClasspath
 
-    for {
-      fullClasspathStr <- Task.fromTry(ensureClasspathLength(fullClasspath))
-      java <- Task.fromTry(javaExecutable)
-
-      classpathOption = "-cp" :: fullClasspathStr :: Nil
-      appOptions = mainClass :: args.toList
-      cmd = java.syntax :: jvmOptions.toList ::: classpathOption ::: appOptions
-
-      logTask <- if (logger.isVerbose) {
+    def runCmd(cmd: List[String]): Task[Int] = {
+      val logTask: Task[Unit] = if (logger.isVerbose) {
         val debugOptions =
           s"""
              |Fork options:
@@ -137,24 +124,72 @@ final class JvmForker(config: JdkConfig, classpath: Array[AbsolutePath]) extends
       } else {
         Task.unit
       }
-      res <- Forker.run(cwd, cmd, logger, opts)
+      logTask
+        .flatMap(_ => Forker.run(cwd, cmd, logger, opts))
+        .map(x => {
+
+          x
+        })
+    }
+
+    val jvmOptions = jargs.map(_.stripPrefix("-J")) ++ config.javaOptions
+    val fullClasspath = classpath ++ extraClasspath
+    val fullClasspathStr = fullClasspath.map(_.syntax).mkString(pathSeparator)
+
+    // Windows max cmd line length is 32767, which seems to be the least of the common shells.
+    val processCmdCharLimit = 30000
+
+    // TODO watch against classpath + args
+    // TODO test that MANIFEST jar is indeed created
+    // TODO clean up temporary files
+    def withShortClasspath[A](fullClasspath: Array[AbsolutePath])(
+        op: AbsolutePath => Task[A]): Task[A] = {
+      if (logger.isVerbose) {
+        val charLimitMsg =
+          s"""|Supplied command to fork exceeds character limit of $processCmdCharLimit
+              |Creating a temporary MANIFEST jar for classpath entries
+              |""".stripMargin
+        logger.debug(charLimitMsg)(DebugFilter.All)
+      }
+      withTempManifestJar(fullClasspath, logger)(op)
+    }
+
+    for {
+      java <- Task.fromTry(javaExecutable)
+
+      classpathOption = "-cp" :: fullClasspathStr :: Nil
+      appOptions = mainClass :: args.toList
+      cmd = java.syntax :: jvmOptions.toList ::: classpathOption ::: appOptions
+      cmdStr = cmd.mkString(" ")
+
+      res <- if (cmdStr.length > processCmdCharLimit) {
+        withShortClasspath(fullClasspath) { shortClasspath =>
+          val shortClasspathOption = "-cp" :: shortClasspath.syntax :: Nil
+          val shortCmd = java.syntax :: jvmOptions.toList ::: shortClasspathOption ::: appOptions
+          runCmd(shortCmd)
+        }
+      } else {
+        runCmd(cmd)
+      }
     } yield {
       res
     }
   }
 
-  private def ensureClasspathLength(classpath: Array[AbsolutePath]): Try[String] = {
-    val fullClasspathStr = classpath.map(_.syntax).mkString(pathSeparator)
-
-    if (fullClasspathStr.length > JvmProcessForker.classpathCharLimit)
-      createTempManifestJar(classpath).map(_.syntax)
-    else
-      Try(fullClasspathStr)
-  }
-
-  private def createTempManifestJar(classpath: Array[AbsolutePath]): Try[AbsolutePath] = Try {
+  private def withTempManifestJar[A](classpath: Array[AbsolutePath], logger: Logger)(
+      op: AbsolutePath => Task[A]): Task[A] = {
     val prefix = "jvm-forker-manifest"
+
     val manifestJar = Files.createTempFile(prefix, ".jar").toAbsolutePath
+    val manifestJarAbs = AbsolutePath(manifestJar)
+    def cleanup = {
+      Task {
+        if (logger.isVerbose) {
+          logger.debug(s"Cleaning up temporary MANIFEST jar: $manifestJar")(DebugFilter.All)
+        }
+        Paths.delete(manifestJarAbs)
+      }
+    }
 
     val classpathStr = classpath.map(addTrailingSlashToDirectories).mkString(" ")
 
@@ -162,19 +197,28 @@ final class JvmForker(config: JdkConfig, classpath: Array[AbsolutePath]) extends
     manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
     manifest.getMainAttributes.put(Attributes.Name.CLASS_PATH, classpathStr)
 
-    val jos = new JarOutputStream(Files.newOutputStream(manifestJar), manifest)
-    jos.close()
+    Bracket.withResource(Files.newOutputStream(manifestJar)) { out =>
+      Bracket.withResource(new JarOutputStream(out, manifest)) { _ =>
+        ()
+      }
+    }
 
-    AbsolutePath(manifestJar)
+    op(manifestJarAbs)
+      .doOnFinish(_ => cleanup)
+      .doOnCancel(cleanup)
   }
 
   // Turns out manifest files can use absolute path directories in the classpath
   // But they need a trailing slash
-  private def addTrailingSlashToDirectories(path: AbsolutePath): String =
-    if (path.isDirectory)
-      s"${path.syntax}${File.separatorChar}"
-    else
-      path.syntax
+  private def addTrailingSlashToDirectories(path: AbsolutePath): String = {
+    val syntax = path.syntax
+    if (syntax.endsWith(".jar")) {
+      syntax
+    } else {
+      println(s"Adding to dir $syntax")
+      syntax + "/"
+    }
+  }
 
   private def javaExecutable: Try[AbsolutePath] = {
     val javaPath = config.javaHome.resolve("bin").resolve("java")
