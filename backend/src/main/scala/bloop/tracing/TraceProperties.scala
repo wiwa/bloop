@@ -8,7 +8,8 @@ case class TraceProperties(
     verbose: Option[Boolean],
     localServiceName: Option[String],
     traceStartAnnotation: Option[String],
-    traceEndAnnotation: Option[String]
+    traceEndAnnotation: Option[String],
+    rootSpanTag: Option[String]
 )
 object TraceProperties {
 
@@ -39,12 +40,17 @@ object TraceProperties {
     override def getOrGlobal(properties: TraceProperties): Option[String] =
       properties.traceEndAnnotation.orElse(Global.traceEndAnnotation)
   }
+  object RootSpanTag extends Property[Option[String]]("bloop.trace.rootSpanTag") {
+    override def getOrGlobal(properties: TraceProperties): Option[String] =
+      properties.rootSpanTag.orElse(Global.rootSpanTag)
+  }
 
   val default: TraceProperties = TraceProperties(
     Some("http://127.0.0.1:9411/api/v2/spans"),
     Some(false),
     Some(false),
     Some("bloop"),
+    None,
     None,
     None
   )
@@ -67,13 +73,17 @@ object TraceProperties {
     val traceEndAnnotation: Option[String] =
       Properties.propOrNone(TraceProperties.TraceEndAnnotation.key)
 
+    val rootSpanTag: Option[String] =
+      Properties.propOrNone(TraceProperties.RootSpanTag.key)
+
     val properties: TraceProperties = TraceProperties(
       Some(zipkinServerUrl),
       Some(debug),
       Some(verbose),
       Some(localServiceName),
       traceStartAnnotation,
-      traceEndAnnotation
+      traceEndAnnotation,
+      rootSpanTag
     )
   }
 }

@@ -163,6 +163,7 @@ object BraveTracer {
     val rootSpan = tags.foldLeft(newParentTrace.name(name)) {
       case (span, (tagKey, tagValue)) => span.tag(tagKey, tagValue)
     }
+    TraceProperties.RootSpanTag.getOrGlobal(traceProperties).foreach(rootSpan.tag("root.info", _))
     rootSpan.start()
     TraceProperties.TraceStartAnnotation.getOrGlobal(traceProperties).foreach(rootSpan.annotate)
     val closeEverything = () => {
